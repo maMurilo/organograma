@@ -39,6 +39,7 @@ C:\dev\html\MeuSiteHtml\obj\Debug\net8.0\MeuSiteHtml.AssemblyInfoInputs.cache
 C:\dev\html\MeuSiteHtml\obj\Debug\net8.0\MeuSiteHtml.AssemblyInfo.cs
 C:\dev\html\MeuSiteHtml\obj\Debug\net8.0\MeuSiteHtml.csproj.CoreCompileInputs.cache
 C:\dev\html\MeuSiteHtml\obj\Debug\net8.0\MeuSiteHtml.MvcApplicationPartsAssemblyInfo.cache
+C:\dev\html\MeuSiteHtml\obj\Debug\net8.0\MeuSiteHtml.sourcelink.json
 C:\dev\html\MeuSiteHtml\obj\Debug\net8.0\rjimswa.dswa.cache.json
 C:\dev\html\MeuSiteHtml\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
 C:\dev\html\MeuSiteHtml\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json

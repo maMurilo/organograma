@@ -1,221 +1,191 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Organograma Organizacional</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<style>
-:root{
-  --bg:#f6f8fb;
-  --card:#ffffff;
-  --leader-bg:#e0f0ff;
-  --accent:#0b62d6;
-  --muted:#6b7280;
-  --line:#cbd5e1;
-  --shadow:0 6px 18px rgba(10,30,60,0.08);
-  --radius:8px;
-  --font-sans:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-}
-html,body{height:100%;margin:0;font-family:var(--font-sans);background:var(--bg);color:#0b1724}
-.container{max-width:1200px;margin:28px auto;padding:18px;}
-header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
-.title{display:flex;gap:12px;align-items:baseline}
-h1{font-size:20px;margin:0}
-.subtitle{color:var(--muted);font-size:13px;margin:0}
-.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.controls button, .controls input[type="search"]{
-  background:var(--card);border:1px solid var(--line);padding:8px 10px;border-radius:8px;box-shadow:var(--shadow);
-  font-size:13px;color:#0b1724;
-}
-.controls button:hover{transform:translateY(-1px);cursor:pointer}
-.controls .primary{background:linear-gradient(180deg,var(--accent),#084bb0);color:white;border:none}
-.org-wrap{overflow:auto;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.6), transparent);border-radius:12px;border:1px solid var(--line)}
-.tree{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;padding:30px 10px;}
-.tree ul{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;padding-top:20px;position:relative;}
-.tree li{list-style:none;text-align:center;position:relative;display:flex;flex-direction:column;align-items:center;padding:10px 5px 0 5px;vertical-align:top;}
-.tree li::before, .tree li::after{
-  content:'';position:absolute;top:0;right:50%;width:50%;border-top:1px solid var(--line);height:20px
-}
-.tree li::after{right:auto;left:50%;border-left:1px solid var(--line)}
-.tree li:only-child::after,.tree li:only-child::before{display:none}
-.tree li:only-child{padding-top:0}
-.tree li:first-child::before,.tree li:last-child::after{border:none}
-.tree ul ul::before{content:'';position:absolute;top:0;left:50%;border-left:1px solid var(--line);height:20px}
-.node{
-  display:flex;flex-direction:column;gap:4px;align-items:center;background:var(--card);padding:12px 16px;border-radius:8px;box-shadow:var(--shadow);min-width:180px;
-  transition:transform .12s ease;cursor:pointer;position:relative;
-}
-.node.compact{min-width:140px;padding:8px 12px}
-.node:hover{transform:translateY(-6px)}
-.node.leader{background: var(--leader-bg);}
-.role{font-weight:600;color:var(--accent);font-size:14px}
-.name{font-size:13px;color:#0b1724}
-.meta{font-size:12px;color:var(--muted)}
-.collapsed > ul{display:none}
-.collapsed > .node::after{content:'▸';position:absolute;right:8px;top:8px;color:var(--muted);font-size:16px}
-.node::after{content:'▾';position:absolute;right:8px;top:8px;color:var(--muted);font-size:16px}
-@media (max-width:520px){.title h1{font-size:16px}}
-@media print{header, .controls, footer {display:none}}
-</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Organograma com Contagem de Subordinados</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+    }
+    svg {
+      width: 100%;
+      height: 100vh;
+      background: #fff;
+      cursor: grab;
+    }
+    .link {
+      fill: none;
+      stroke: #999;
+      stroke-width: 2px;
+    }
+    .node rect {
+      rx: 12; ry: 12;
+      fill: #fff;
+      stroke-width: 2.5px;
+      cursor: pointer;
+    }
+    .node text.name {
+      font-size: 13px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+    .node text.role {
+      font-size: 11px;
+      fill: #555;
+      text-anchor: middle;
+    }
+    .node text.count {
+      font-size: 10px;
+      fill: #888;
+      text-anchor: middle;
+    }
+    .hidden rect, .hidden text {
+      display: none; /* nós invisíveis usados só para espaçar */
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <div class="title">
-      <div>
-        <h1>Organograma Organizacional</h1>
-        <p class="subtitle">Filtre por cargo ou líder</p>
-      </div>
-    </div>
-    <div class="controls">
-      <input type="search" id="search" placeholder="Ex: Gerente ou Nome do Líder" />
-      <button id="expandAll">Expandir tudo</button>
-      <button id="collapseAll">Fechar tudo</button>
-      <button id="toggleCompact">Modo compacto</button>
-      <button id="printBtn">Imprimir</button>
-      <button id="downloadPNG" class="primary">Baixar PNG</button>
-    </div>
-  </header>
-  <main>
-    <div class="org-wrap" id="orgWrap">
-      <div class="tree" id="treeContainer"></div>
-    </div>
-  </main>
-</div>
-
+<svg id="svg"></svg>
 <script>
-async function loadExcel() {
-  const res = await fetch("dados.xlsx"); // arquivo na mesma pasta
-  const buf = await res.arrayBuffer();
-  const wb = XLSX.read(buf, {type:"array"});
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(sheet);
-}
-
-function buildOrgTree(data) {
-  let nodes = {};
-  function ensureNode(name, role, desc){
-    if(!name) return null;
-    if(!nodes[name]) nodes[name]={id:name,name,role:role||"",desc:desc||"",children:[]};
-    else{ if(role) nodes[name].role=role; if(desc) nodes[name].desc=desc; }
-    return nodes[name];
-  }
-
-  data.forEach(r=>{
-    const f=r.NomeFuncionario?.trim();
-    const d=r.DescricaoCargo?.trim();
-    const l=r.NomeLider?.trim();
-    const fNode = ensureNode(f,"",d);
-    const lNode = ensureNode(l);
-    if(fNode && lNode && !lNode.children.includes(fNode)) lNode.children.push(fNode);
-  });
-
-  const lideres = new Set(data.map(r=>r.NomeLider?.trim()).filter(Boolean));
-  let roots = Array.from(lideres).map(l=>nodes[l]).filter(Boolean);
-
-  let semLider = data.filter(r=>!r.NomeLider || r.NomeLider.trim()==="").map(r=>nodes[r.NomeFuncionario?.trim()]).filter(Boolean);
-  if(semLider.length>0) roots.push({id:"sem_lider",name:"Sem Líder",role:"",children:semLider});
-
-  return {id:"root",name:"Organograma",role:"",children:roots};
-}
-
-function countDescendants(node){
-  if(!node.children || node.children.length===0) return 0;
-  let total = node.children.length;
-  node.children.forEach(c=>{ total += countDescendants(c); });
-  return total;
-}
-
-function createNodeElement(node){
-  const li=document.createElement('li');
-  li.setAttribute('data-id',node.id);
-
-  const numLiderados = node.children ? node.children.length : 0;
-  const totalDesc = countDescendants(node);
-
-  const card=document.createElement('div');
-  card.className='node';
-  if(numLiderados>0) card.classList.add('leader');
-  card.innerHTML=`
-    <div class="role">${node.role||""}</div>
-    <div class="name">${node.name||""}</div>
-    ${node.desc?`<div class="meta">${node.desc}</div>`:""}
-    ${numLiderados>0?`<div class="meta">Diretos: ${numLiderados}, Total: ${totalDesc}</div>`:""}
-  `;
-
-  li.appendChild(card);
-
-  if(node.children && node.children.length){
-    const ul=document.createElement('ul');
-    node.children.forEach(c=>{
-      const childLi = createNodeElement(c);
-      childLi.classList.add('collapsed'); // começa recolhido
-      ul.appendChild(childLi);
-    });
-    li.appendChild(ul);
-    li.classList.add('collapsed'); // nó inicial recolhido
-  }
-
-  card.addEventListener('click',()=>li.classList.toggle('collapsed'));
-  return li;
-}
-
-function renderTree(root,target){
-  target.innerHTML="";
-  target.style.display="flex";
-  root.children.forEach(r=>{
-    const ul=document.createElement('ul');
-    ul.appendChild(createNodeElement(r));
-    target.appendChild(ul);
-  });
-}
-
-function findSubtreeByQuery(node, query){
-  const q = query.toLowerCase();
-  if((node.name && node.name.toLowerCase().includes(q)) ||
-     (node.role && node.role.toLowerCase().includes(q))) return node;
-  if(node.children){
-    for(const c of node.children){
-      const f = findSubtreeByQuery(c, query);
-      if(f) return f;
+  // Função que quebra filhos em grupos de até N
+  function splitChildren(node, maxPerRow=5) {
+    if (!node.children) return;
+    if (node.children.length > maxPerRow) {
+      const newChildren = [];
+      for (let i=0; i<node.children.length; i+=maxPerRow) {
+        newChildren.push({
+          name: "grupo",
+          hidden: true,
+          children: node.children.slice(i, i+maxPerRow)
+        });
+      }
+      node.children = newChildren;
     }
+    node.children.forEach(c => splitChildren(c, maxPerRow));
   }
-  return null;
-}
 
-function renderFilteredTree(query){
-  const container=document.getElementById('treeContainer');
-  if(!query){ renderTree(orgData,container); return; }
-  const subtree=findSubtreeByQuery(orgData,query);
-  if(subtree) renderTree({children:[subtree]},container);
-  else{ alert("Não encontrado: "+query); renderTree(orgData,container);}
-}
+  // Estrutura com Nome + Cargo
+  const data = {
+    name: "Maria Souza", role:"Direção Geral", color:"#c9302c", children:[
+      { name:"João Lima", role:"Direção Administrativa", color:"#28a745", children:[
+        { name:"Paula Torres", role:"Administração", color:"#28a745",
+          children:[{name:"Carlos Silva", role:"Auxiliar Administrativo", color:"#28a745",
+            children:[{name:"Ana Costa", role:"Aprendiz", color:"#28a745"}]}] },
+        { name:"Fernanda Alves", role:"Núcleo de Comunicação", color:"#28a745",
+          children:[{name:"Roberto Dias", role:"Gestora", color:"#28a745",
+            children:[{name:"Bruna Melo", role:"Estagiário", color:"#28a745"}]}] },
+        { name:"Sérgio Gomes", role:"Facilitadora de RH", color:"#28a745", children:[{name:"Auxiliar", role:"RH", color:"#28a745"}] },
+        { name:"Marta Ramos", role:"Limpeza e Manutenção", color:"#28a745", children:[{name:"Auxiliar", role:"Serviços", color:"#28a745"}] },
+        { name:"Clara Pinto", role:"Serviço Social", color:"#28a745" }
+      ]},
+      { name:"Pe. Antônio", role:"Direção Espiritual", color:"#ff8c00", children:[
+        { name:"Equipe Pastoral", role:"Pastoral", color:"#ff8c00", children:[{name:"Auxiliar", role:"Apoio", color:"#ff8c00"}] }
+      ]},
+      { name:"Beatriz Nunes", role:"Direção Pedagógica", color:"#007bff", children:[
+        { name:"Lucas Prado", role:"Coordenação Pedagógica", color:"#007bff",
+          children:[{name:"Equipe de Educadores", role:"Educadores", color:"#007bff",
+            children:[{name:"Estagiárias", role:"Estágio", color:"#007bff"},{name:"Monitores", role:"Monitoria", color:"#007bff"}]}] },
+        { name:"Camila Rocha", role:"Biblioteca", color:"#007bff", children:[{name:"Auxiliar de Bibliotecário", role:"Biblioteca", color:"#007bff"}] },
+        { name:"Felipe Martins", role:"Secretaria", color:"#007bff", children:[{name:"Auxiliar", role:"Secretaria", color:"#007bff"}] },
+        { name:"Núcleo Didático", role:"Didático", color:"#007bff" },
+        { name:"Equipe Projetos", role:"Pedagogia de Projetos", color:"#007bff", children:[{name:"Auxiliar", role:"Projetos", color:"#007bff"}] },
+        { name:"Equipe Psicoped", role:"Psicopedagogia", color:"#007bff", children:[{name:"Psicólogas", role:"Psicologia", color:"#007bff"}] }
+      ]}
+    ]
+  };
 
-function collapseAll(){document.querySelectorAll('.tree li').forEach(li=>li.classList.add('collapsed'))}
-function expandAll(){document.querySelectorAll('.tree li').forEach(li=>li.classList.remove('collapsed'))}
-let compact=false;
-function toggleCompact(){compact=!compact;document.querySelectorAll('.node').forEach(n=>n.classList.toggle('compact',compact))}
-async function downloadPNG(){
-  const el=document.getElementById('orgWrap');
-  const canvas=await html2canvas(el,{scale:2});
-  const a=document.createElement('a'); a.href=canvas.toDataURL(); a.download='organograma.png'; a.click();
-}
+  // aplica quebra automática
+  splitChildren(data, 5);
 
-let orgData;
-document.addEventListener('DOMContentLoaded',async ()=>{
-  const data = await loadExcel();
-  orgData = buildOrgTree(data);
-  renderTree(orgData,document.getElementById('treeContainer'));
+  const svg = d3.select("#svg");
+  const g = svg.append("g");
 
-  document.getElementById('expandAll').onclick=expandAll;
-  document.getElementById('collapseAll').onclick=collapseAll;
-  document.getElementById('toggleCompact').onclick=toggleCompact;
-  document.getElementById('printBtn').onclick=()=>window.print();
-  document.getElementById('downloadPNG').onclick=downloadPNG;
-  document.getElementById('search').addEventListener('input',e=>renderFilteredTree(e.target.value.trim()));
-});
+  const dx = 140;   // vertical
+  const dy = 260;   // horizontal
+  const tree = d3.tree().nodeSize([dy, dx]);
+  let root = d3.hierarchy(data);
+
+  // Função auxiliar para contar descendentes
+  function countDescendants(node) {
+    if (!node.children) return 0;
+    return node.children.reduce((sum, c) => sum + 1 + countDescendants(c), 0);
+  }
+
+  // Calcula contagem de diretos/indiretos
+  root.each(d => {
+    d.data.direct = d.children ? d.children.length : 0;
+    d.data.total = countDescendants(d);
+    d.data.indirect = d.data.total - d.data.direct;
+  });
+
+  function update(source) {
+    tree(root);
+
+    // Links
+    const link = g.selectAll(".link")
+      .data(root.links(), d => d.target.data.name);
+
+    link.join("path")
+      .attr("class","link")
+      .attr("d", d => `
+        M${d.source.x},${d.source.y+35}
+        V${(d.source.y+d.target.y)/2}
+        H${d.target.x}
+        V${d.target.y-35}
+      `);
+
+    // Nós
+    const node = g.selectAll(".node")
+      .data(root.descendants(), d => d.data.name);
+
+    const nodeEnter = node.join("g")
+      .attr("class", d => d.data.hidden ? "node hidden" : "node")
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+
+    nodeEnter.append("rect")
+      .attr("x", -95).attr("y", -35)
+      .attr("width", 190).attr("height", 70)
+      .attr("stroke", d => d.data.color || "#333")
+      .on("click", (event, d) => {
+        if (d.children) {
+          d._children = d.children;
+          d.children = null;
+        } else if (d._children) {
+          d.children = d._children;
+          d._children = null;
+        }
+        update(d);
+      });
+
+    nodeEnter.append("text")
+      .attr("class","name")
+      .attr("dy", "-8")
+      .text(d => d.data.name);
+
+    nodeEnter.append("text")
+      .attr("class","role")
+      .attr("dy", "10")
+      .text(d => d.data.role || "");
+
+    nodeEnter.append("text")
+      .attr("class","count")
+      .attr("dy", "26")
+      .text(d => `Diretos: ${d.data.direct} | Indiretos: ${d.data.indirect}`);
+  }
+
+  update(root);
+
+  // Pan/zoom
+  svg.call(d3.zoom()
+    .scaleExtent([0.5, 2])
+    .on("zoom", (event) => g.attr("transform", event.transform))
+  );
+
+  g.attr("transform", `translate(${window.innerWidth/2},60)`);
 </script>
 </body>
 </html>
