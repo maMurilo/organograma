@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Organograma com Destaque de Líderes</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f9f9f9;
+    text-align: center;
+    padding: 30px;
+  }
+
+  h2 { margin-bottom: 20px; }
+
+  /* === Estilo geral dos cards === */
+  .node {
+    position: relative;
+    background: #ffffff;
+    color: #333;
+    border: 2px solid #005b7f;
+    border-radius: 8px;
+    padding: 10px 20px;
+    text-align: center;
+    font-weight: bold;
+    min-width: 120px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+
+  /* === Líderes (caixas destacadas) === */
+  .leader {
+    background: linear-gradient(180deg, #0074a6 0%, #005b7f 100%);
+    color: #fff;
+    border-color: #003f5e;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  }
+
+  /* === Container dos filhos === */
+  .children {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    position: relative;
+    gap: 40px;
+    margin-top: 30px;
+  }
+
+  /* Linha horizontal entre irmãos */
+  .children::before {
+    content: "";
+    position: absolute;
+    top: -20px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #005b7f;
+  }
+
+  /* Cada grupo de filho */
+  .child {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  /* Linha vertical do líder ao filho */
+  .child::before {
+    content: "";
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    width: 2px;
+    height: 20px;
+    background: #005b7f;
+  }
+</style>
+</head>
+<body>
+
+<h2>Organograma Dinâmico com Destaque de Líderes</h2>
+<div id="treeContainer"></div>
+
+<script>
+// ====================================================
+// 1️⃣ Dados de exemplo (pode ser trocado por Excel depois)
+// ====================================================
+const relacoes = [
+  { lider: "Ana", liderado: "Bruno" },
+  { lider: "Ana", liderado: "Pedro" },
+  { lider: "Ana", liderado: "Ana 2" },
+  { lider: "Bruno", liderado: "Carlos" },
+  { lider: "Carlos", liderado: "Joao" },
+  { lider: "Pedro", liderado: "Maria" },
+  { lider: "Maria", liderado: "Julia" }
+];
+
+// ====================================================
+// 2️⃣ Mapa de hierarquia e conjunto de líderes
+// ====================================================
+const mapa = {};
+relacoes.forEach(({ lider, liderado }) => {
+  if (!mapa[lider]) mapa[lider] = { nome: lider, filhos: [] };
+  if (!mapa[liderado]) mapa[liderado] = { nome: liderado, filhos: [] };
+  mapa[lider].filhos.push(mapa[liderado]);
+});
+
+const todosLideres = new Set(relacoes.map(r => r.lider)); // 👈 conjunto de líderes
+
+// ====================================================
+// 3️⃣ Identifica os líderes de topo (não são liderados)
+// ====================================================
+const liderados = new Set(relacoes.map(r => r.liderado));
+const topos = Object.values(mapa).filter(p => !liderados.has(p.nome));
+
+// ====================================================
+// 4️⃣ Função recursiva que gera o HTML
+// ====================================================
+function criarArvore(node) {
+  const nodeEl = document.createElement("div");
+  nodeEl.className = "node";
+
+  // Se for líder → cor especial
+  if (todosLideres.has(node.nome)) {
+    nodeEl.classList.add("leader");
+  }
+
+  nodeEl.textContent = node.nome;
+
+  // Se tiver filhos, desenha recursivamente
+  if (node.filhos && node.filhos.length > 0) {
+    const childrenContainer = document.createElement("div");
+    childrenContainer.className = "children";
+
+    node.filhos.forEach(filho => {
+      const childWrapper = document.createElement("div");
+      childWrapper.className = "child";
+      childWrapper.appendChild(criarArvore(filho));
+      childrenContainer.appendChild(childWrapper);
+    });
+
+    const wrapper = document.createElement("div");
+    wrapper.style.display = "flex";
+    wrapper.style.flexDirection = "column";
+    wrapper.style.alignItems = "center";
+    wrapper.appendChild(nodeEl);
+    wrapper.appendChild(childrenContainer);
+    return wrapper;
+  }
+
+  return nodeEl;
+}
+
+// ====================================================
+// 5️⃣ Renderiza todas as árvores detectadas
+// ====================================================
+const container = document.getElementById("treeContainer");
+
+if (topos.length === 0) {
+  container.textContent = "⚠️ Nenhum líder principal encontrado!";
+} else {
+  topos.forEach(topo => {
+    const arvore = criarArvore(topo);
+    const separador = document.createElement("div");
+    separador.style.marginBottom = "40px";
+    container.appendChild(arvore);
+    container.appendChild(separador);
+  });
+}
+</script>
+
+</body>
+</html>

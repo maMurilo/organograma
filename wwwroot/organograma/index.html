@@ -5,48 +5,8 @@
   <meta charset="UTF-8">
   <title>Organograma com Contagem de Subordinados</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f5f7fb;
-    }
-    svg {
-      width: 100%;
-      height: 100vh;
-      background: #fff;
-      cursor: grab;
-    }
-    .link {
-      fill: none;
-      stroke: #999;
-      stroke-width: 2px;
-    }
-    .node rect {
-      rx: 12; ry: 12;
-      fill: #fff;
-      stroke-width: 2.5px;
-      cursor: pointer;
-    }
-    .node text.name {
-      font-size: 13px;
-      font-weight: bold;
-      text-anchor: middle;
-    }
-    .node text.role {
-      font-size: 11px;
-      fill: #555;
-      text-anchor: middle;
-    }
-    .node text.count {
-      font-size: 10px;
-      fill: #888;
-      text-anchor: middle;
-    }
-    .hidden rect, .hidden text {
-      display: none; /* nós invisíveis usados só para espaçar */
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
+  
 </head>
 <body>
 <svg id="svg"></svg>
