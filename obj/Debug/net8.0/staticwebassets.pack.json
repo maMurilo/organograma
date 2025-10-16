@@ -1,0 +1,65 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\index.html",
+      "PackagePath": "staticwebassets\\index.html"
+    },
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\organograma\\index.html",
+      "PackagePath": "staticwebassets\\organograma\\index.html"
+    },
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\organograma\\indexv2.html",
+      "PackagePath": "staticwebassets\\organograma\\indexv2.html"
+    },
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\organograma\\indexv3.html",
+      "PackagePath": "staticwebassets\\organograma\\indexv3.html"
+    },
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\organograma\\organograma.html",
+      "PackagePath": "staticwebassets\\organograma\\organograma.html"
+    },
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\organograma\\organograma.js",
+      "PackagePath": "staticwebassets\\organograma\\organograma.js"
+    },
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\organograma\\organograma.xlsx",
+      "PackagePath": "staticwebassets\\organograma\\organograma.xlsx"
+    },
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\organograma\\style.css",
+      "PackagePath": "staticwebassets\\organograma\\style.css"
+    },
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\organograma\\teste.html",
+      "PackagePath": "staticwebassets\\organograma\\teste.html"
+    },
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\script.js",
+      "PackagePath": "staticwebassets\\script.js"
+    },
+    {
+      "Id": "C:\\Dev\\MeuSiteHtml\\wwwroot\\teste.html",
+      "PackagePath": "staticwebassets\\teste.html"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.MeuSiteHtml.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.MeuSiteHtml.props",
+      "PackagePath": "build\\MeuSiteHtml.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.MeuSiteHtml.props",
+      "PackagePath": "buildMultiTargeting\\MeuSiteHtml.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildTransitive.MeuSiteHtml.props",
+      "PackagePath": "buildTransitive\\MeuSiteHtml.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

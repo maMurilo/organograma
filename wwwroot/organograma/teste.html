@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Organograma (5 por linha, clique-para-expandir, pan/zoom)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/@panzoom/panzoom@9.4.0/dist/panzoom.min.js"></script>
+<style>
+  body{font-family:system-ui,Segoe UI,Arial;margin:0;background:#f5f7fb;color:#0b1724}
+  header{padding:16px 20px;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10}
+  h1{margin:0;font-size:18px}
+  .wrap{max-width:100%;margin:20px auto;padding:0 12px}
+
+  /* área de pan/zoom */
+  .org-container{
+    width:100%;
+    height:80vh;
+    border:1px solid #d1d5db;
+    overflow:hidden;           /* impede scroll do container; pan/zoom cuida do resto */
+    background:#f5f7fb;
+    position:relative;
+    cursor:grab;
+  }
+  .org-container:active{ cursor:grabbing; }
+
+  /* árvore (elemento que recebe o pan/zoom) */
+  .tree{
+    display:flex;flex-direction:column;align-items:center;gap:24px;
+    touch-action:none;         /* necessário para pan/zoom em ponteiros/gestos */
+    transform-origin: 0 0;     /* pan/zoom mais previsível a partir do canto */
+    will-change: transform;    /* dica de performance */
+  }
+  .tree ul{display:flex;gap:20px;justify-content:center;padding-top:24px;position:relative}
+  .tree li{list-style:none;text-align:center;position:relative;display:flex;flex-direction:column;align-items:center;padding:8px 6px 0}
+  .tree li::before,.tree li::after{
+    content:'';position:absolute;top:0;right:50%;width:50%;border-top:1px solid #d1d5db;height:20px
+  }
+  .tree li::after{right:auto;left:50%;border-left:1px solid #d1d5db}
+  .tree li:only-child::after,.tree li:only-child::before{display:none}
+  .tree li:only-child{padding-top:0}
+  .tree li:first-child::before,.tree li:last-child::after{border:none}
+  .tree ul ul::before{content:'';position:absolute;top:0;left:50%;border-left:1px solid #d1d5db;height:20px}
+
+  /* cards */
+  .node{
+    width:220px;height:110px;
+    background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.06);
+    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;
+    position:relative;padding:8px;cursor:pointer;transition:transform .1s ease, box-shadow .1s ease
+  }
+  .node:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(0,0,0,.1)}
+  .node.leader::before{
+    content:'';position:absolute;top:0;left:0;width:100%;height:6px;background:#0b62d6;border-radius:10px 10px 0 0
+  }
+  .role{font-size:13px;color:#0b62d6;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .name{font-size:14px;color:#0b1724;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .meta{font-size:12px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .name.clickable{color:#084bb0;text-decoration:underline;cursor:pointer}
+
+  /* agrupamento de filhos em múltiplas fileiras */
+  .children-groups{display:flex;flex-direction:column;align-items:center;gap:24px}
+  .children-groups > ul{display:flex;justify-content:center;gap:20px;position:relative}
+
+  /* escondidos até expandir */
+  .collapsed > .children-groups{display:none}
+
+  .panel{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .panel button,.panel input{padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font-size:13px}
+  .panel button:hover{background:#f3f4f6;cursor:pointer}
+  .panel .primary{background:#0b62d6;color:#fff;border:none}
+</style>
+</head>
+<body>
+<header><h1>Organograma (5 por linha, expande ao clicar, pan/zoom)</h1></header>
+<div class="wrap">
+  <div class="panel">
+    <input type="file" id="arquivoExcel" accept=".xlsx,.xls">
+    <input type="search" id="busca" placeholder="Buscar por nome ou cargo">
+    <button id="expandir">Expandir tudo</button>
+    <button id="recolher">Recolher tudo</button>
+    <button id="voltar" style="display:none">Voltar ao organograma completo</button>
+    <button class="primary" id="mostrarJSON">Ver JSON (debug)</button>
+  </div>
+
+  <div class="org-container">
+    <div class="tree" id="container"></div>
+  </div>
+</div>
+
+<script>
+const PER_ROW = 5;   // quantidade por linha (raízes e filhos)
+
+/* ===== Excel ===== */
+async function lerExcel(file){
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf,{type:"array"});
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(sheet);
+}
+
+/* ===== Árvore ===== */
+function buildOrgTree(lista){
+  const nodes={};
+  function ensureNode(id,name,role="",desc=""){
+    if(!id) return null;
+    if(!nodes[id]) nodes[id]={id,name,role,desc,children:[]};
+    else{ if(role) nodes[id].role=role; if(desc) nodes[id].desc=desc; }
+    return nodes[id];
+  }
+  lista.forEach(r=>{
+    const nome=r.NomeFuncionario?.trim();
+    const cargo=r.DescricaoCargo?.trim();
+    const lider=r.NomeLider?.trim();
+    if(!nome) return;
+    const fNode=ensureNode(nome,nome,cargo,cargo);
+    const lNode=lider?ensureNode(lider,lider):null;
+    if(lNode && fNode && !lNode.children.includes(fNode)) lNode.children.push(fNode);
+  });
+  const lideres=new Set(lista.map(r=>r.NomeLider?.trim()).filter(Boolean));
+  const roots=Array.from(lideres)
+    .filter(l=>!lista.some(r=>r.NomeFuncionario?.trim()===l && r.NomeLider?.trim()))
+    .map(l=>nodes[l]).filter(Boolean);
+  const semLider=lista.filter(r=>!r.NomeLider||r.NomeLider.trim()==="")
+    .map(r=>nodes[r.NomeFuncionario?.trim()]).filter(Boolean);
+  if(semLider.length>0) roots.push({id:"(sem)",name:"Sem líder",children:semLider});
+  return {id:"root",children:roots};
+}
+
+/* ===== Render ===== */
+function countDesc(n){return (n.children||[]).reduce((t,c)=>t+1+countDesc(c),0);}
+
+let isPanning = false; // evita clique acidental enquanto arrasta
+
+function createNodeElement(n){
+  const li=document.createElement('li');
+  const diretos=n.children?.length||0, total=countDesc(n);
+  const card=document.createElement('div');
+  card.className='node'; if(diretos>0) card.classList.add('leader');
+  card.innerHTML=`
+    <div class="role">${n.role||""}</div>
+    <div class="name ${diretos>0?"clickable":""}">${n.name||""}</div>
+    ${n.desc?`<div class="meta">${n.desc}</div>`:""}
+    ${diretos?`<div class="meta">Diretos:${diretos} · Total:${total}</div>`:""}
+  `;
+  card.onclick=(ev)=>{
+    if(isPanning) return; // ignorar cliques durante pan
+    if(ev.target.classList.contains('name')&&ev.target.classList.contains('clickable')) return;
+    li.classList.toggle('collapsed');
+  };
+  const clickable=card.querySelector('.name.clickable');
+  if(clickable){
+    clickable.addEventListener('click',e=>{
+      if(isPanning) return;
+      e.stopPropagation();
+      renderTree({children:[n]},document.getElementById('container'));
+      document.getElementById('voltar').style.display='inline-block';
+    });
+  }
+  li.appendChild(card);
+
+  // filhos em grupos de PER_ROW (ocultos até expandir)
+  if(n.children && n.children.length){
+    const groupContainer=document.createElement('div');
+    groupContainer.classList.add('children-groups');
+    for(let i=0;i<n.children.length;i+=PER_ROW){
+      const group=n.children.slice(i,i+PER_ROW);
+      const ul=document.createElement('ul');
+      group.forEach(ch=>{
+        const chLi=createNodeElement(ch);
+        chLi.classList.add('collapsed'); // filhos também iniciam fechados
+        ul.appendChild(chLi);
+      });
+      groupContainer.appendChild(ul);
+    }
+    li.appendChild(groupContainer);
+    li.classList.add('collapsed'); // começa fechado
+  }
+  return li;
+}
+
+function renderTree(root,target){
+  target.innerHTML='';
+  for(let i=0;i<root.children.length;i+=PER_ROW){
+    const group=root.children.slice(i,i+PER_ROW);
+    const ul=document.createElement('ul');
+    group.forEach(r=>ul.appendChild(createNodeElement(r)));
+    target.appendChild(ul);
+  }
+}
+
+/* ===== Controles ===== */
+function expandAll(){document.querySelectorAll('.tree li').forEach(li=>li.classList.remove('collapsed'));}
+function collapseAll(){document.querySelectorAll('.tree li').forEach(li=>li.classList.add('collapsed'));}
+function findSubtree(node,q){
+  q=q.toLowerCase();
+  if((node.name&&node.name.toLowerCase().includes(q))||(node.role&&node.role.toLowerCase().includes(q))) return node;
+  for(const c of(node.children||[])){const f=findSubtree(c,q);if(f) return f;}
+  return null;
+}
+function renderFilteredTree(query){
+  const container=document.getElementById('container');
+  if(!query){renderTree(orgData,container);return;}
+  const sub=findSubtree(orgData,query);
+  if(sub){renderTree({children:[sub]},container);document.getElementById('voltar').style.display='inline-block';}
+  else alert("Não encontrado: "+query);
+}
+
+/* ===== Bootstrap ===== */
+let orgData=null;
+document.getElementById('expandir').onclick=expandAll;
+document.getElementById('recolher').onclick=collapseAll;
+document.getElementById('voltar').onclick=()=>{renderTree(orgData,document.getElementById('container'));document.getElementById('voltar').style.display='none';};
+document.getElementById('mostrarJSON').onclick=()=>alert(JSON.stringify(orgData,null,2));
+document.getElementById('busca').addEventListener('input',e=>{const q=e.target.value.trim();if(q)renderFilteredTree(q);else renderTree(orgData,document.getElementById('container'));});
+document.getElementById('arquivoExcel').addEventListener('change',async e=>{
+  const file=e.target.files[0]; if(!file) return;
+  const dados=await lerExcel(file);
+  orgData=buildOrgTree(dados);
+  renderTree(orgData,document.getElementById('container'));
+  resetPanZoom(); // centraliza/ajusta ao carregar
+});
+
+/* ===== Pan/Zoom ===== */
+let panzoom;
+function resetPanZoom(){
+  const elem=document.getElementById("container");
+  if(!panzoom){
+    panzoom=Panzoom(elem,{maxScale:2.5,minScale:0.5,step:0.2});
+    // roda do mouse para zoom (com preventDefault)
+    elem.parentElement.addEventListener('wheel',function(e){
+      e.preventDefault();
+      panzoom.zoomWithWheel(e);
+    }, { passive:false });
+
+    // marcar quando está pan (para bloquear cliques acidentais)
+    elem.addEventListener('panzoomstart', ()=>{ isPanning=true; });
+    elem.addEventListener('panzoomend',   ()=>{ isPanning=false; });
+  }
+  // resetar posição/escala ao (re)render
+  panzoom.reset({ animate:false });
+  // opcional: dar um leve zoom-out para “caber mais”
+  // panzoom.zoom(0.9, { animate:false });
+}
+
+document.addEventListener("DOMContentLoaded",resetPanZoom);
+</script>
+</body>
+</html>
