@@ -1,109 +1,126 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-<meta charset="UTF-8">
-<title>Organograma de Fazenda</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-    margin: 20px;
-    background-color: #fff;
-  }
+  <meta charset="UTF-8">
+  <title>Organograma de Fazendas</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+      background-color: #fff;
+    }
 
-  h2 {
-    margin-bottom: 10px;
-  }
+    h2 {
+      margin-bottom: 10px;
+    }
 
-  select {
-    padding: 5px 10px;
-    margin-bottom: 30px;
-    font-size: 14px;
-  }
+    select {
+      padding: 5px 10px;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
 
-  /* Container principal */
-  .tree {
-    display: flex;
-    justify-content: center;
-  }
+    /* Container geral do organograma */
+    .tree {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 60px;
+    }
 
-  /* Estilo do nó */
-  .box {
-    background-color: #ff5400;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 6px;
-    display: inline-block;
-    min-width: 100px;
-    text-align: center;
-    font-weight: bold;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  }
+    /* Cada organograma individual de fazenda */
+    .fazenda-bloco {
+      display: inline-block;
+    }
 
-  /* Layout hierárquico */
-  .tree ul {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    padding-top: 30px;
-    flex-wrap: wrap;
-  }
+    .fazenda-titulo {
+      font-weight: bold;
+      margin-bottom: 15px;
+      font-size: 18px;
+      color: #2c3e50;
+    }
 
-  .tree li {
-    list-style-type: none;
-    text-align: center;
-    position: relative;
-    padding: 20px 10px 0 10px;
-  }
+    /* Estrutura hierárquica */
+    .tree ul {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      padding-top: 30px;
+      flex-wrap: wrap;
+    }
 
-  /* Linhas que conectam os nós */
-  .tree li::before, .tree li::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    border-top: 2px solid #ccc;
-    width: 50%;
-    height: 20px;
-  }
+    .tree li {
+      list-style-type: none;
+      text-align: center;
+      position: relative;
+      padding: 20px 10px 0 10px;
+    }
 
-  .tree li::before {
-    right: 50%;
-  }
+    /* Linhas horizontais entre nós */
+    .tree li::before,
+    .tree li::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      border-top: 2px solid #ccc;
+      width: 50%;
+      height: 20px;
+    }
 
-  .tree li::after {
-    left: 50%;
-  }
+    .tree li::before {
+      right: 50%;
+    }
 
-  /* Remove linhas desnecessárias */
-  .tree li:only-child::before, 
-  .tree li:only-child::after {
-    display: none;
-  }
+    .tree li::after {
+      left: 50%;
+    }
 
-  .tree li:only-child {
-    padding-top: 0;
-  }
+    /* Remove linhas únicas */
+    .tree li:only-child::before,
+    .tree li:only-child::after {
+      display: none;
+    }
 
-  /* Linha vertical */
-  .tree li > ul::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    border-left: 2px solid #ccc;
-    height: 30px;
-  }
+    .tree li:only-child {
+      padding-top: 0;
+    }
 
-  /* Cores diferentes para líderes */
-  .lider {
-    background-color: #ff5400;
-  }
+    /* Linha vertical conectando níveis */
+    .tree li>ul::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      border-left: 2px solid #ccc;
+      height: 30px;
+    }
 
-  .liderado {
-    background-color: #ff7f50;
-  }
-</style>
+    /* Caixas dos membros */
+    .box {
+      background-color: #ff5400;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      display: inline-block;
+      min-width: 100px;
+      text-align: center;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Diferenciar líder e liderado */
+    .lider {
+      background-color: #ff5400;
+    }
+
+    .liderado {
+      background-color: #ff7f50;
+    }
+  </style>
 </head>
+
 <body>
   <h2>Escolha uma fazenda:</h2>
   <select id="fazendaSelect">
@@ -114,25 +131,37 @@
 
   <script>
     const relacoes = [
-      { fazenda:"FESP", lider: "Ana", liderado: "Bruno" },
-      { fazenda:"FESP", lider: "Ana", liderado: "Pedro" },
-      { fazenda:"FESP", lider: "Ana", liderado: "Ana 2" },
-      { fazenda:"FSTV", lider: "Bruno", liderado: "Carlos" },
-      { fazenda:"FSTV", lider: "Carlos", liderado: "Joao" },
-      { fazenda:"MTR", lider: "Pedro", liderado: "Maria" },
-      { fazenda:"FPA", lider: "Maria", liderado: "Julia" },
-      { fazenda:"FPA", lider: "Maria", liderado: "Lara" },
-      { fazenda:"FBG", lider: "Maria", liderado: "Lara" },
-      { fazenda:"FEA", lider: "Maria", liderado: "Lara" },
-      { fazenda:"FBLA", lider: "Maria", liderado: "Lara" },
-      { fazenda:"FESP", lider: "Maria", liderado: "Lara" }
+      { fazenda: "FESP", lider: "Ana", liderado: "Bruno" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+      { fazenda: "FESP", lider: "Ana", liderado: "Pedro" },
+
+      { fazenda: "FESP", lider: "Ana", liderado: "Ana 2" },
+      { fazenda: "FSTV", lider: "Bruno", liderado: "Carlos" },
+      { fazenda: "FSTV", lider: "Carlos", liderado: "Joao" },
+      { fazenda: "MTR", lider: "Pedro", liderado: "Maria" },
+      { fazenda: "FPA", lider: "Maria", liderado: "Julia" },
+      { fazenda: "FPA", lider: "Maria", liderado: "Lara" },
+      { fazenda: "FBG", lider: "Maria", liderado: "Lara" },
+      { fazenda: "FEA", lider: "Maria", liderado: "Lara" },
+      { fazenda: "FBLA", lider: "Maria", liderado: "Lara" },
+      { fazenda: "FESP", lider: "Maria", liderado: "Lara" }
     ];
 
     const fazendaSelect = document.getElementById("fazendaSelect");
     const organogramaDiv = document.getElementById("organograma");
 
-    // Popula dropdown com fazendas únicas
+    // Popula dropdown com fazendas únicas + "Todos"
     const fazendasUnicas = [...new Set(relacoes.map(r => r.fazenda))];
+    fazendasUnicas.sort().unshift("Todos");
     fazendasUnicas.forEach(fazenda => {
       const option = document.createElement("option");
       option.value = fazenda;
@@ -140,24 +169,22 @@
       fazendaSelect.appendChild(option);
     });
 
-    // Função para construir árvore hierárquica
+    // Função que cria uma árvore hierárquica a partir das relações
     function buildTree(relacoes) {
       const mapa = {};
       const todos = new Set();
 
-      relacoes.forEach(({lider, liderado}) => {
+      relacoes.forEach(({ lider, liderado }) => {
         if (!mapa[lider]) mapa[lider] = [];
         mapa[lider].push(liderado);
         todos.add(lider);
         todos.add(liderado);
       });
 
-      // Descobre quem é o topo (não liderado por ninguém)
       const liderados = new Set(relacoes.map(r => r.liderado));
       const topo = [...todos].find(p => !liderados.has(p));
       if (!topo) return null;
 
-      // Função recursiva
       function createNode(nome) {
         const li = document.createElement("li");
         const div = document.createElement("div");
@@ -178,15 +205,44 @@
       return ul;
     }
 
+    // Evento de mudança no dropdown
     fazendaSelect.addEventListener("change", () => {
       organogramaDiv.innerHTML = "";
       const fazendaSelecionada = fazendaSelect.value;
       if (!fazendaSelecionada) return;
 
-      const relacoesFazenda = relacoes.filter(r => r.fazenda === fazendaSelecionada);
-      const tree = buildTree(relacoesFazenda);
-      if (tree) organogramaDiv.appendChild(tree);
+      if (fazendaSelecionada === "Todos") {
+        // Monta todas as fazendas
+        fazendasUnicas.filter(f => f !== "Todos").forEach(f => {
+          const bloco = document.createElement("div");
+          bloco.className = "fazenda-bloco";
+          const titulo = document.createElement("div");
+          titulo.className = "fazenda-titulo";
+          titulo.textContent = f;
+          bloco.appendChild(titulo);
+
+          const relacoesFazenda = relacoes.filter(r => r.fazenda === f);
+          const tree = buildTree(relacoesFazenda);
+          if (tree) bloco.appendChild(tree);
+
+          organogramaDiv.appendChild(bloco);
+        });
+      } else {
+        // Monta apenas uma fazenda
+        const relacoesFazenda = relacoes.filter(r => r.fazenda === fazendaSelecionada);
+        const bloco = document.createElement("div");
+        bloco.className = "fazenda-bloco";
+        const titulo = document.createElement("div");
+        titulo.className = "fazenda-titulo";
+        titulo.textContent = fazendaSelecionada;
+        bloco.appendChild(titulo);
+
+        const tree = buildTree(relacoesFazenda);
+        if (tree) bloco.appendChild(tree);
+        organogramaDiv.appendChild(bloco);
+      }
     });
   </script>
 </body>
+
 </html>
