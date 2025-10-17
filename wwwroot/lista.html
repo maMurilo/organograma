@@ -3,238 +3,269 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Organograma Interativo de Fazendas (D3)</title>
+<title>Organogramas D3 de Fazendas</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
   body {
     font-family: "Segoe UI", Arial, sans-serif;
+    background: #f9fafb;
     margin: 0;
     text-align: center;
-    background: #fff;
   }
-  h2 { margin: 10px 0; }
+
+  h2 { margin: 15px 0; }
+
   select {
-    padding: 5px 10px;
+    padding: 6px 12px;
     margin: 5px;
+    font-size: 14px;
   }
+
   svg {
     width: 100%;
     height: 90vh;
+    background: #fff;
     border-top: 1px solid #ddd;
-    background: #fafafa;
-    cursor: move;
+    cursor: grab;
   }
+
   .link {
     fill: none;
-    stroke: #ccc;
+    stroke: #bbb;
     stroke-width: 2px;
   }
+
   rect {
-    fill: white;
+    fill: #fff;
     rx: 10;
     ry: 10;
     stroke-width: 3px;
     cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }
+
   text {
     font-size: 12px;
     text-anchor: middle;
     font-family: "Segoe UI", sans-serif;
   }
+
   .name { font-weight: bold; }
-  .hidden rect, .hidden text { display: none; }
+  .titulo-fazenda {
+    font-size: 18px;
+    font-weight: bold;
+    fill: #333;
+  }
+
+  #legenda { margin-top: 8px; }
+
+  .legenda-item {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 10px;
+  }
+
+  .cor {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    border-radius: 4px;
+  }
 </style>
 </head>
 <body>
-  <h2>Organograma Interativo de Fazendas</h2>
+  <h2>Organogramas Interativos de Fazendas</h2>
 
   <label>Fazenda:</label>
   <select id="fazendaSelect"></select>
   <label>Líder:</label>
   <select id="liderSelect"></select>
 
+  <div id="legenda"></div>
   <svg id="svg"></svg>
 
 <script>
-  // -------------------------
-  // Dados de exemplo
-  // -------------------------
-  const relacoes = [
-    { fazenda:"FESP", lider: "Ana", liderado: "Bruno" },
-    { fazenda:"FESP", lider: "Ana", liderado: "Pedro" },
-    { fazenda:"FESP", lider: "Ana", liderado: "João" },
-    { fazenda:"FPA",  lider: "Ana", liderado: "Julia" },
-    { fazenda:"FSTV", lider: "Bruno", liderado: "Carlos" },
-    { fazenda:"FSTV", lider: "Carlos", liderado: "Joao" },
-    { fazenda:"MTR",  lider: "Pedro", liderado: "Maria" },
-    { fazenda:"FPA",  lider: "Maria", liderado: "Lara" },
-    { fazenda:"FBG",  lider: "Maria", liderado: "Lara" },
-    { fazenda:"FEA",  lider: "Maria", liderado: "Lara" },
-    { fazenda:"FBLA", lider: "Maria", liderado: "Lara" },
-    { fazenda:"FBLA", lider: "Kayo", liderado: "Lucas" },
-    { fazenda:"FESP", lider: "Maria", liderado: "Lara" }
-  ];
+const relacoes = [
+  { fazenda:"FESP", lider: "Ana", liderado: "Bruno" },
+  { fazenda:"FESP", lider: "Ana", liderado: "Pedro" },
+  { fazenda:"FESP", lider: "Ana", liderado: "João" },
+  { fazenda:"FPA",  lider: "Ana", liderado: "Julia" },
+  { fazenda:"FSTV", lider: "Bruno", liderado: "Carlos" },
+  { fazenda:"FSTV", lider: "Carlos", liderado: "Joao" },
+  { fazenda:"MTR",  lider: "Pedro", liderado: "Maria" },
+  { fazenda:"FPA",  lider: "Maria", liderado: "Lara" },
+  { fazenda:"FBG",  lider: "Maria", liderado: "Lara" },
+  { fazenda:"FEA",  lider: "Maria", liderado: "Lara" },
+  { fazenda:"FBLA", lider: "Maria", liderado: "Lara" },
+  { fazenda:"FESP", lider: "Maria", liderado: "Lara" }
+];
 
-  // -------------------------
-  // Preparação dos selects
-  // -------------------------
-  const fazendaSelect = document.getElementById("fazendaSelect");
-  const liderSelect = document.getElementById("liderSelect");
+const fazendaSelect = document.getElementById("fazendaSelect");
+const liderSelect = document.getElementById("liderSelect");
 
-  const fazendasUnicas = [...new Set(relacoes.map(r => r.fazenda))];
-  const lideresUnicos = [...new Set(relacoes.map(r => r.lider))];
+const fazendasUnicas = [...new Set(relacoes.map(r => r.fazenda))];
+const lideresUnicos = [...new Set(relacoes.map(r => r.lider))];
 
-  fazendaSelect.innerHTML = "<option value='Todos'>Todos</option>" +
-    fazendasUnicas.map(f => `<option value='${f}'>${f}</option>`).join('');
-  liderSelect.innerHTML = "<option value='Todos'>Todos</option>" +
-    lideresUnicos.map(l => `<option value='${l}'>${l}</option>`).join('');
+fazendaSelect.innerHTML = "<option value='Todos'>Todos</option>" +
+  fazendasUnicas.map(f => `<option value='${f}'>${f}</option>`).join('');
+liderSelect.innerHTML = "<option value='Todos'>Todos</option>" +
+  lideresUnicos.map(l => `<option value='${l}'>${l}</option>`).join('');
 
-  // -------------------------
-  // Funções utilitárias
-  // -------------------------
-  function splitChildren(node, maxPerRow = 6) {
-    if (!node.children) return;
-    if (node.children.length > maxPerRow) {
-      const newChildren = [];
-      for (let i = 0; i < node.children.length; i += maxPerRow) {
-        newChildren.push({
-          name: "grupo",
-          hidden: true,
-          children: node.children.slice(i, i + maxPerRow)
-        });
-      }
-      node.children = newChildren;
+const colorMap = {
+  FESP: "#f97316",
+  FPA: "#22c55e",
+  FSTV: "#3b82f6",
+  MTR: "#eab308",
+  FEA: "#8b5cf6",
+  FBG: "#8b5cf6",
+  FBLA: "#8b5cf6"
+};
+
+// legenda
+document.getElementById("legenda").innerHTML = fazendasUnicas.map(f =>
+  `<span class="legenda-item"><span class="cor" style="background:${colorMap[f]}"></span>${f}</span>`
+).join("");
+
+function splitChildren(node, maxPerRow = 6) {
+  if (!node.children) return;
+  if (node.children.length > maxPerRow) {
+    const newChildren = [];
+    for (let i = 0; i < node.children.length; i += maxPerRow) {
+      newChildren.push({
+        name: "grupo",
+        hidden: true,
+        children: node.children.slice(i, i + maxPerRow)
+      });
     }
-    node.children.forEach(c => splitChildren(c, maxPerRow));
+    node.children = newChildren;
   }
+  node.children.forEach(c => splitChildren(c, maxPerRow));
+}
 
-  function countDescendants(node) {
-    if (!node.children) return 0;
-    return node.children.reduce((sum, c) => sum + 1 + countDescendants(c), 0);
-  }
+function countDescendants(node) {
+  if (!node.children) return 0;
+  return node.children.reduce((sum, c) => sum + 1 + countDescendants(c), 0);
+}
 
-  const colorMap = {
-    FESP: "#f97316",
-    FPA: "#22c55e",
-    FSTV: "#3b82f6",
-    MTR: "#eab308",
-    FEA: "#8b5cf6",
-    FBG: "#8b5cf6",
-    FBLA: "#8b5cf6"
-  };
+function montarHierarquia(dadosFiltrados, fazenda) {
+  const mapa = {};
+  dadosFiltrados.forEach(({lider, liderado}) => {
+    if (!mapa[lider]) mapa[lider] = { name: lider, role: "Líder", color: colorMap[fazenda] || "#ccc", children: [] };
+    if (!mapa[liderado]) mapa[liderado] = { name: liderado, role: "Subordinado", color: colorMap[fazenda] || "#ccc" };
+    mapa[lider].children.push(mapa[liderado]);
+  });
 
-  // -------------------------
-  // Função para montar hierarquia
-  // -------------------------
-  function montarHierarquia(fazendaSel, liderSel) {
-    let dadosFiltrados = relacoes;
+  const liderados = new Set(dadosFiltrados.map(r => r.liderado));
+  const topo = Object.values(mapa).find(p => !liderados.has(p.name));
+  if (!topo) return null;
 
-    if (fazendaSel !== "Todos")
-      dadosFiltrados = dadosFiltrados.filter(r => r.fazenda === fazendaSel);
+  splitChildren(topo, 6);
+  const root = d3.hierarchy(topo);
+  root.each(d => {
+    d.data.direct = d.children ? d.children.length : 0;
+    d.data.total = countDescendants(d);
+    d.data.indirect = d.data.total - d.data.direct;
+  });
+  return root;
+}
 
-    if (liderSel !== "Todos")
-      dadosFiltrados = dadosFiltrados.filter(r => r.lider === liderSel);
-
-    // cria mapa líder -> filhos
-    const mapa = {};
-    dadosFiltrados.forEach(({fazenda, lider, liderado}) => {
-      if (!mapa[lider]) mapa[lider] = { name: lider, role: "Líder", color: colorMap[fazenda] || "#ccc", children: [] };
-      if (!mapa[liderado]) mapa[liderado] = { name: liderado, role: "Subordinado", color: colorMap[fazenda] || "#ccc" };
-      mapa[lider].children.push(mapa[liderado]);
-    });
-
-    // encontra raiz (quem não é liderado)
-    const liderados = new Set(dadosFiltrados.map(r => r.liderado));
-    const topo = Object.values(mapa).find(p => !liderados.has(p.name));
-
-    if (!topo) return null;
-    splitChildren(topo, 6);
-
-    const root = d3.hierarchy(topo);
-    root.each(d => {
-      d.data.direct = d.children ? d.children.length : 0;
-      d.data.total = countDescendants(d);
-      d.data.indirect = d.data.total - d.data.direct;
-    });
-    return root;
-  }
-
-  // -------------------------
-  // Função para desenhar o gráfico
-  // -------------------------
 function desenhar(fazendaSel, liderSel) {
   const svg = d3.select("#svg");
-  svg.selectAll("*").remove(); // limpa
+  svg.selectAll("*").remove();
   const g = svg.append("g");
 
-  // --- espaçamentos ajustados ---
-  const dx = 220;  // horizontal (distância entre irmãos)
-  const dy = 180;  // vertical (distância entre níveis)
+  const dx = 200;
+  const dy = 160;
   const tree = d3.tree().nodeSize([dx, dy]);
 
-  const root = montarHierarquia(fazendaSel, liderSel);
-  if (!root) return;
+  const fazendas = fazendaSel === "Todos" ? fazendasUnicas : [fazendaSel];
+  let yOffset = 0;
 
-  tree(root);
+  fazendas.forEach(fazenda => {
+    let dados = relacoes.filter(r => r.fazenda === fazenda);
+    if (liderSel !== "Todos") dados = dados.filter(r => r.lider === liderSel);
+    if (dados.length === 0) return;
 
-    const links = g.selectAll(".link")
+    const root = montarHierarquia(dados, fazenda);
+    if (!root) return;
+    tree(root);
+
+    const deslocY = yOffset + 80;
+
+    // título da fazenda
+    g.append("text")
+      .attr("class", "titulo-fazenda")
+      .attr("x", 0)
+      .attr("y", deslocY - 40)
+      .text(fazenda);
+
+    // linhas
+    g.selectAll(`.link-${fazenda}`)
       .data(root.links())
       .join("path")
       .attr("class", "link")
-      .attr("d", d => `
-        M${d.source.x},${d.source.y + 35}
-        V${(d.source.y + d.target.y) / 2}
-        H${d.target.x}
-        V${d.target.y - 35}
-      `);
+      .attr("stroke", colorMap[fazenda])
+      .attr("d", d3.linkVertical()
+        .x(d => d.x)
+        .y(d => d.y + deslocY));
 
-    const nodes = g.selectAll(".node")
+    // nós
+    const node = g.selectAll(`.node-${fazenda}`)
       .data(root.descendants())
       .join("g")
-      .attr("class", d => d.data.hidden ? "node hidden" : "node")
-      .attr("transform", d => `translate(${d.x},${d.y})`);
+      .attr("transform", d => `translate(${d.x},${d.y + deslocY})`);
 
-    nodes.append("rect")
-      .attr("x", -90).attr("y", -35)
-      .attr("width", 180).attr("height", 70)
+    node.append("rect")
+      .attr("x", -90)
+      .attr("y", -35)
+      .attr("width", 180)
+      .attr("height", 70)
       .attr("stroke", d => d.data.color)
-      .attr("fill", "white")
-      .on("click", (event, d) => {
-        if (d.children) { d._children = d.children; d.children = null; }
-        else if (d._children) { d.children = d._children; d._children = null; }
-        desenhar(fazendaSel, liderSel);
-      });
+      .attr("fill", "#fff");
 
-    nodes.append("text")
-      .attr("class", "name")
-      .attr("dy", "-8")
-      .text(d => d.data.name);
-
-    nodes.append("text")
-      .attr("class", "role")
-      .attr("dy", "10")
-      .text(d => d.data.role || "");
-
-    nodes.append("text")
-      .attr("class", "count")
-      .attr("dy", "26")
+    node.append("text").attr("class", "name").attr("dy", "-8").text(d => d.data.name);
+    node.append("text").attr("class", "role").attr("dy", "10").text(d => d.data.role);
+    node.append("text").attr("class", "count").attr("dy", "26")
       .text(d => `Diretos: ${d.data.direct} | Indiretos: ${d.data.indirect}`);
 
-    const zoom = d3.zoom()
-      .scaleExtent([0.4, 2])
-      .on("zoom", e => g.attr("transform", e.transform));
+    // deslocamento vertical para próxima fazenda
+    yOffset += (root.height + 3) * dy + 200;
+  });
 
-    svg.call(zoom).call(zoom.transform, d3.zoomIdentity.translate(window.innerWidth / 2, 60));
-  }
+  // ---- Pan e Zoom ----
+  const zoom = d3.zoom()
+    .scaleExtent([0.3, 2])
+    .on("zoom", e => g.attr("transform", e.transform));
 
-  // -------------------------
-  // Eventos de seleção
-  // -------------------------
-  fazendaSelect.addEventListener("change", () => desenhar(fazendaSelect.value, liderSelect.value));
-  liderSelect.addEventListener("change", () => desenhar(fazendaSelect.value, liderSelect.value));
+  svg.call(zoom);
 
-  // Render inicial
-  desenhar("Todos", "Todos");
+  // Aguarda o DOM atualizar antes de medir o tamanho real
+  requestAnimationFrame(() => {
+    const bbox = g.node().getBBox();
+    const svgWidth = svg.node().clientWidth;
+    const svgHeight = svg.node().clientHeight;
+
+    // cálculo para centralizar
+    const scale = Math.min(
+      (svgWidth * 0.9) / bbox.width,
+      (svgHeight * 0.9) / bbox.height,
+      1
+    );
+
+    const translateX = svgWidth / 2 - (bbox.x + bbox.width / 2) * scale;
+    const translateY = svgHeight / 2 - (bbox.y + bbox.height / 2) * scale;
+
+    const t = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
+
+    svg.transition().duration(800).call(zoom.transform, t);
+  });
+}
+
+
+fazendaSelect.addEventListener("change", () => desenhar(fazendaSelect.value, liderSelect.value));
+liderSelect.addEventListener("change", () => desenhar(fazendaSelect.value, liderSelect.value));
+
+desenhar("Todos", "Todos");
 </script>
 </body>
 </html>

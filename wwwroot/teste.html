@@ -1,11 +1,253 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
+
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta charset="UTF-8">
+    <title>Organograma com Filtro por Cargo</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            margin: 0;
+            text-align: center;
+            background: #f9fafb;
+        }
+
+        h2 {
+            margin: 10px 0;
+        }
+
+        select {
+            padding: 6px 12px;
+            margin: 10px;
+            font-size: 14px;
+        }
+
+        svg {
+            width: 100%;
+            height: 90vh;
+            background: #fff;
+            cursor: grab;
+        }
+
+        .link {
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 2px;
+        }
+
+        rect {
+            fill: #fff;
+            rx: 10;
+            ry: 10;
+            stroke-width: 3px;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        text {
+            font-size: 12px;
+            text-anchor: middle;
+            font-family: "Segoe UI", sans-serif;
+            pointer-events: none;
+        }
+
+        .name {
+            font-weight: bold;
+        }
+    </style>
 </head>
+
 <body>
-    <h1>Estou aqui detro do teste</h1>
+    <h2>Organograma Interativo com Filtro por Cargo</h2>
+
+    <label for="roleSelect">Filtrar por cargo:</label>
+    <select id="roleSelect"></select>
+
+    <svg id="svg"></svg>
+
+    <script>
+        // ----------- Função que divide filhos em grupos -----------
+        function splitChildren(node, maxPerRow = 5) {
+            if (!node.children) return;
+            if (node.children.length > maxPerRow) {
+                const newChildren = [];
+                for (let i = 0; i < node.children.length; i += maxPerRow) {
+                    newChildren.push({
+                        name: "grupo",
+                        hidden: true,
+                        children: node.children.slice(i, i + maxPerRow)
+                    });
+                }
+                node.children = newChildren;
+            }
+            node.children.forEach(c => splitChildren(c, maxPerRow));
+        }
+
+        // ----------- Estrutura base de dados -----------
+        const data = {
+            name: "Maria Souza", role: "Direção Geral", color: "#c9302c", children: [
+                {
+                    name: "João Lima", role: "Direção Administrativa", color: "#28a745", children: [
+                        {
+                            name: "Paula Torres", role: "Administração", color: "#28a745",
+                            children: [{
+                                name: "Carlos Silva", role: "Auxiliar Administrativo", color: "#28a745",
+                                children: [{ name: "Ana Costa", role: "Aprendiz", color: "#28a745" }]
+                            }]
+                        },
+                        {
+                            name: "Fernanda Alves", role: "Núcleo de Comunicação", color: "#28a745",
+                            children: [{
+                                name: "Roberto Dias", role: "Gestora", color: "#28a745",
+                                children: [{ name: "Bruna Melo", role: "Estagiário", color: "#28a745" }]
+                            }]
+                        },
+                        { name: "Sérgio Gomes", role: "Facilitadora de RH", color: "#28a745", children: [{ name: "Auxiliar", role: "RH", color: "#28a745" }] },
+                        { name: "Marta Ramos", role: "Limpeza e Manutenção", color: "#28a745", children: [{ name: "Auxiliar", role: "Serviços", color: "#28a745" }] },
+                        { name: "Clara Pinto", role: "Serviço Social", color: "#28a745" }
+                    ]
+                },
+                {
+                    name: "Pe. Antônio", role: "Direção Espiritual", color: "#ff8c00", children: [
+                        { name: "Equipe Pastoral", role: "Pastoral", color: "#ff8c00", children: [{ name: "Auxiliar", role: "Apoio", color: "#ff8c00" }] }
+                    ]
+                },
+                {
+                    name: "Beatriz Nunes", role: "Direção Pedagógica", color: "#007bff", children: [
+                        {
+                            name: "Lucas Prado", role: "Coordenação Pedagógica", color: "#007bff",
+                            children: [{
+                                name: "Equipe de Educadores", role: "Educadores", color: "#007bff",
+                                children: [
+                                    { name: "Estagiárias", role: "Estágio", color: "#007bff" },
+                                    { name: "Monitores", role: "Monitoria", color: "#007bff" }
+                                ]
+                            }]
+                        },
+                        { name: "Camila Rocha", role: "Biblioteca", color: "#007bff", children: [{ name: "Auxiliar de Bibliotecário", role: "Biblioteca", color: "#007bff" }] },
+                        { name: "Felipe Martins", role: "Secretaria", color: "#007bff", children: [{ name: "Auxiliar", role: "Secretaria", color: "#007bff" }] },
+                        { name: "Núcleo Didático", role: "Didático", color: "#007bff" },
+                        { name: "Equipe Projetos", role: "Pedagogia de Projetos", color: "#007bff", children: [{ name: "Auxiliar", role: "Projetos", color: "#007bff" }] },
+                        { name: "Equipe Psicoped", role: "Psicopedagogia", color: "#007bff", children: [{ name: "Psicólogas", role: "Psicologia", color: "#007bff" }] }
+                    ]
+                }
+            ]
+        };
+
+        splitChildren(data,6);
+
+        const svg = d3.select("#svg");
+        const g = svg.append("g");
+        const dx = 140, dy = 260;
+        const tree = d3.tree().nodeSize([dy, dx]);
+
+        function countDescendants(node) {
+            if (!node.children) return 0;
+            return node.children.reduce((sum, c) => sum + 1 + countDescendants(c), 0);
+        }
+
+        function calcular(root) {
+            root.each(d => {
+                d.data.direct = d.children ? d.children.length : 0;
+                d.data.total = countDescendants(d);
+                d.data.indirect = d.data.total - d.data.direct;
+            });
+        }
+
+        // ----------- Desenhar organograma -----------
+        function desenhar(dados) {
+            g.selectAll("*").remove();
+            const root = d3.hierarchy(dados);
+            calcular(root);
+            tree(root);
+
+            const link = g.selectAll(".link")
+                .data(root.links())
+                .join("path")
+                .attr("class", "link")
+                .attr("d", d => `
+          M${d.source.x},${d.source.y + 35}
+          V${(d.source.y + d.target.y) / 2}
+          H${d.target.x}
+          V${d.target.y - 35}
+        `);
+
+            const node = g.selectAll(".node")
+                .data(root.descendants())
+                .join("g")
+                .attr("class", d => d.data.hidden ? "node hidden" : "node")
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+
+            node.append("rect")
+                .attr("x", -95).attr("y", -35)
+                .attr("width", 190).attr("height", 70)
+                .attr("stroke", d => d.data.color || "#333")
+                .attr("fill", "white")
+                .on("click", (event, d) => {
+                    if (d.children) { d._children = d.children; d.children = null; }
+                    else if (d._children) { d.children = d._children; d._children = null; }
+                    desenhar(dados);
+                });
+
+            node.append("text").attr("class", "name").attr("dy", "-8").text(d => d.data.name);
+            node.append("text").attr("class", "role").attr("dy", "10").text(d => d.data.role || "");
+            node.append("text").attr("class", "count").attr("dy", "26")
+                .text(d => `Diretos: ${d.data.direct} | Indiretos: ${d.data.indirect}`);
+
+            // Centraliza o gráfico
+            const bbox = g.node().getBBox();
+            const svgWidth = svg.node().clientWidth;
+            const svgHeight = svg.node().clientHeight;
+            const scale = Math.min(svgWidth / bbox.width, svgHeight / bbox.height, 1) * 0.9;
+            const translateX = svgWidth / 2 - (bbox.x + bbox.width / 2) * scale;
+            const translateY = 60;
+            g.attr("transform", `translate(${translateX},${translateY}) scale(${scale})`);
+        }
+
+        desenhar(data);
+
+        // ----------- Pan e Zoom -----------
+        svg.call(d3.zoom()
+            .scaleExtent([0.5, 2])
+            .on("zoom", (event) => g.attr("transform", event.transform))
+        );
+
+        // ----------- Filtro por Cargo (refaz organograma) -----------
+        const todosRoles = Array.from(new Set(
+            d3.hierarchy(data).descendants().map(d => d.data.role).filter(Boolean)
+        ));
+        const roleSelect = document.getElementById("roleSelect");
+        roleSelect.innerHTML = `<option value="Todos">Todos</option>` +
+            todosRoles.map(r => `<option value="${r}">${r}</option>`).join('');
+
+        roleSelect.addEventListener("change", () => {
+            const roleSelecionado = roleSelect.value;
+            if (roleSelecionado === "Todos") {
+                desenhar(data);
+                return;
+            }
+
+            // Filtra recursivamente
+            function filtrarPorRole(node) {
+                if (node.role === roleSelecionado) return node;
+                if (!node.children) return null;
+                const filhosFiltrados = node.children
+                    .map(filtrarPorRole)
+                    .filter(Boolean);
+                if (filhosFiltrados.length) {
+                    return { ...node, children: filhosFiltrados };
+                }
+                return null;
+            }
+
+            const filtrado = filtrarPorRole(data);
+            if (filtrado) desenhar(filtrado);
+            else g.selectAll("*").remove(); // nada encontrado
+        });
+    </script>
 </body>
+
 </html>
