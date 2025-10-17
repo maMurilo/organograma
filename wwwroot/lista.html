@@ -2,7 +2,28 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Lista de Relações</title>
+  <title>Organograma de Fazenda</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .organograma {
+      margin-top: 20px;
+    }
+    .node {
+      margin-left: 20px;
+      border-left: 2px solid #ccc;
+      padding-left: 10px;
+      margin-bottom: 10px;
+    }
+    .lider {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .liderado {
+      margin-left: 20px;
+    }
+  </style>
 </head>
 <body>
   <h2>Escolha uma fazenda:</h2>
@@ -10,7 +31,7 @@
     <option value="">-- Selecione --</option>
   </select>
 
-  <div id="relacoesContainer" style="margin-top: 20px;"></div>
+  <div id="organograma" class="organograma"></div>
 
   <script>
     const relacoes = [
@@ -26,16 +47,14 @@
       { fazenda:"FPA", lider: "Maria", liderado: "Lara" },
       { fazenda:"FEA", lider: "Maria", liderado: "Lara" },
       { fazenda:"FBLA", lider: "Maria", liderado: "Lara" },
-      { fazenda:"FBLA", lider: "Maria", liderado: "Lara" }
+      { fazenda:"FESP", lider: "Maria", liderado: "Lara" }
     ];
 
     const fazendaSelect = document.getElementById("fazendaSelect");
-    const relacoesContainer = document.getElementById("relacoesContainer");
+    const organogramaDiv = document.getElementById("organograma");
 
-    // Obter fazendas únicas
+    // Fazendas únicas
     const fazendasUnicas = [...new Set(relacoes.map(r => r.fazenda))];
-
-    // Preencher o dropdown
     fazendasUnicas.forEach(fazenda => {
       const option = document.createElement("option");
       option.value = fazenda;
@@ -43,41 +62,43 @@
       fazendaSelect.appendChild(option);
     });
 
-    // Quando selecionar uma fazenda
+    // Evento de mudança no dropdown
     fazendaSelect.addEventListener("change", () => {
       const fazendaSelecionada = fazendaSelect.value;
-
-      // Limpa a div
-      relacoesContainer.innerHTML = "";
+      organogramaDiv.innerHTML = "";
 
       if (!fazendaSelecionada) return;
 
-      // Filtra as relações pela fazenda
+      // Filtra relações por fazenda
       const relacoesFazenda = relacoes.filter(r => r.fazenda === fazendaSelecionada);
 
-      // Agrupa por líder
-      const lideresMap = {};
+      // Monta um mapa: líder -> [liderados]
+      const mapaLideres = {};
       relacoesFazenda.forEach(({ lider, liderado }) => {
-        if (!lideresMap[lider]) {
-          lideresMap[lider] = new Set();
+        if (!mapaLideres[lider]) {
+          mapaLideres[lider] = new Set();
         }
-        lideresMap[lider].add(liderado);
+        mapaLideres[lider].add(liderado);
       });
 
-      // Exibir os líderes e seus liderados
-      for (const lider in lideresMap) {
-        const liderDiv = document.createElement("div");
-        liderDiv.innerHTML = `<strong>Líder: ${lider}</strong>`;
-        
-        const ul = document.createElement("ul");
-        lideresMap[lider].forEach(liderado => {
-          const li = document.createElement("li");
-          li.textContent = liderado;
-          ul.appendChild(li);
+      // Renderiza organograma
+      for (const lider in mapaLideres) {
+        const nodeDiv = document.createElement("div");
+        nodeDiv.className = "node";
+
+        const liderEl = document.createElement("div");
+        liderEl.className = "lider";
+        liderEl.textContent = lider;
+        nodeDiv.appendChild(liderEl);
+
+        mapaLideres[lider].forEach(liderado => {
+          const lideradoEl = document.createElement("div");
+          lideradoEl.className = "liderado";
+          lideradoEl.textContent = `├── ${liderado}`;
+          nodeDiv.appendChild(lideradoEl);
         });
 
-        liderDiv.appendChild(ul);
-        relacoesContainer.appendChild(liderDiv);
+        organogramaDiv.appendChild(nodeDiv);
       }
     });
   </script>
