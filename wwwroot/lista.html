@@ -1,29 +1,108 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Organograma de Fazenda</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-    }
-    .organograma {
-      margin-top: 20px;
-    }
-    .node {
-      margin-left: 20px;
-      border-left: 2px solid #ccc;
-      padding-left: 10px;
-      margin-bottom: 10px;
-    }
-    .lider {
-      font-weight: bold;
-      color: #2c3e50;
-    }
-    .liderado {
-      margin-left: 20px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Organograma de Fazenda</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 20px;
+    background-color: #fff;
+  }
+
+  h2 {
+    margin-bottom: 10px;
+  }
+
+  select {
+    padding: 5px 10px;
+    margin-bottom: 30px;
+    font-size: 14px;
+  }
+
+  /* Container principal */
+  .tree {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Estilo do nó */
+  .box {
+    background-color: #ff5400;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    display: inline-block;
+    min-width: 100px;
+    text-align: center;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+
+  /* Layout hierárquico */
+  .tree ul {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding-top: 30px;
+    flex-wrap: wrap;
+  }
+
+  .tree li {
+    list-style-type: none;
+    text-align: center;
+    position: relative;
+    padding: 20px 10px 0 10px;
+  }
+
+  /* Linhas que conectam os nós */
+  .tree li::before, .tree li::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    border-top: 2px solid #ccc;
+    width: 50%;
+    height: 20px;
+  }
+
+  .tree li::before {
+    right: 50%;
+  }
+
+  .tree li::after {
+    left: 50%;
+  }
+
+  /* Remove linhas desnecessárias */
+  .tree li:only-child::before, 
+  .tree li:only-child::after {
+    display: none;
+  }
+
+  .tree li:only-child {
+    padding-top: 0;
+  }
+
+  /* Linha vertical */
+  .tree li > ul::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    border-left: 2px solid #ccc;
+    height: 30px;
+  }
+
+  /* Cores diferentes para líderes */
+  .lider {
+    background-color: #ff5400;
+  }
+
+  .liderado {
+    background-color: #ff7f50;
+  }
+</style>
 </head>
 <body>
   <h2>Escolha uma fazenda:</h2>
@@ -31,7 +110,7 @@
     <option value="">-- Selecione --</option>
   </select>
 
-  <div id="organograma" class="organograma"></div>
+  <div id="organograma" class="tree"></div>
 
   <script>
     const relacoes = [
@@ -44,7 +123,6 @@
       { fazenda:"FPA", lider: "Maria", liderado: "Julia" },
       { fazenda:"FPA", lider: "Maria", liderado: "Lara" },
       { fazenda:"FBG", lider: "Maria", liderado: "Lara" },
-      { fazenda:"FPA", lider: "Maria", liderado: "Lara" },
       { fazenda:"FEA", lider: "Maria", liderado: "Lara" },
       { fazenda:"FBLA", lider: "Maria", liderado: "Lara" },
       { fazenda:"FESP", lider: "Maria", liderado: "Lara" }
@@ -53,7 +131,7 @@
     const fazendaSelect = document.getElementById("fazendaSelect");
     const organogramaDiv = document.getElementById("organograma");
 
-    // Fazendas únicas
+    // Popula dropdown com fazendas únicas
     const fazendasUnicas = [...new Set(relacoes.map(r => r.fazenda))];
     fazendasUnicas.forEach(fazenda => {
       const option = document.createElement("option");
@@ -62,44 +140,52 @@
       fazendaSelect.appendChild(option);
     });
 
-    // Evento de mudança no dropdown
-    fazendaSelect.addEventListener("change", () => {
-      const fazendaSelecionada = fazendaSelect.value;
-      organogramaDiv.innerHTML = "";
+    // Função para construir árvore hierárquica
+    function buildTree(relacoes) {
+      const mapa = {};
+      const todos = new Set();
 
-      if (!fazendaSelecionada) return;
-
-      // Filtra relações por fazenda
-      const relacoesFazenda = relacoes.filter(r => r.fazenda === fazendaSelecionada);
-
-      // Monta um mapa: líder -> [liderados]
-      const mapaLideres = {};
-      relacoesFazenda.forEach(({ lider, liderado }) => {
-        if (!mapaLideres[lider]) {
-          mapaLideres[lider] = new Set();
-        }
-        mapaLideres[lider].add(liderado);
+      relacoes.forEach(({lider, liderado}) => {
+        if (!mapa[lider]) mapa[lider] = [];
+        mapa[lider].push(liderado);
+        todos.add(lider);
+        todos.add(liderado);
       });
 
-      // Renderiza organograma
-      for (const lider in mapaLideres) {
-        const nodeDiv = document.createElement("div");
-        nodeDiv.className = "node";
+      // Descobre quem é o topo (não liderado por ninguém)
+      const liderados = new Set(relacoes.map(r => r.liderado));
+      const topo = [...todos].find(p => !liderados.has(p));
+      if (!topo) return null;
 
-        const liderEl = document.createElement("div");
-        liderEl.className = "lider";
-        liderEl.textContent = lider;
-        nodeDiv.appendChild(liderEl);
+      // Função recursiva
+      function createNode(nome) {
+        const li = document.createElement("li");
+        const div = document.createElement("div");
+        div.className = "box " + (mapa[nome] ? "lider" : "liderado");
+        div.textContent = nome;
+        li.appendChild(div);
 
-        mapaLideres[lider].forEach(liderado => {
-          const lideradoEl = document.createElement("div");
-          lideradoEl.className = "liderado";
-          lideradoEl.textContent = `├── ${liderado}`;
-          nodeDiv.appendChild(lideradoEl);
-        });
-
-        organogramaDiv.appendChild(nodeDiv);
+        if (mapa[nome]) {
+          const ul = document.createElement("ul");
+          mapa[nome].forEach(filho => ul.appendChild(createNode(filho)));
+          li.appendChild(ul);
+        }
+        return li;
       }
+
+      const ul = document.createElement("ul");
+      ul.appendChild(createNode(topo));
+      return ul;
+    }
+
+    fazendaSelect.addEventListener("change", () => {
+      organogramaDiv.innerHTML = "";
+      const fazendaSelecionada = fazendaSelect.value;
+      if (!fazendaSelecionada) return;
+
+      const relacoesFazenda = relacoes.filter(r => r.fazenda === fazendaSelecionada);
+      const tree = buildTree(relacoesFazenda);
+      if (tree) organogramaDiv.appendChild(tree);
     });
   </script>
 </body>
