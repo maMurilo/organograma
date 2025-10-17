@@ -2,138 +2,63 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Organograma Interativo de Fazendas</title>
-
-<!-- Panzoom CDN -->
-<script src="https://unpkg.com/@panzoom/panzoom@9.4.0/dist/panzoom.min.js"></script>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organograma Interativo de Fazendas (D3)</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
   body {
     font-family: "Segoe UI", Arial, sans-serif;
-    background-color: #fff;
     margin: 0;
-    padding: 10px;
     text-align: center;
+    background: #fff;
   }
-
-  h2 {
-    margin: 10px 0 20px;
-  }
-
+  h2 { margin: 10px 0; }
   select {
     padding: 5px 10px;
     margin: 5px;
-    font-size: 14px;
   }
-
-  #wrapper {
-    border: 1px solid #ddd;
+  svg {
     width: 100%;
-    height: 85vh;
-    overflow: hidden;
-    position: relative;
-    background-color: #fafafa;
-    border-radius: 8px;
+    height: 90vh;
+    border-top: 1px solid #ddd;
+    background: #fafafa;
+    cursor: move;
   }
-
-  #organograma {
-    transform-origin: center center;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100%;
+  .link {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 2px;
   }
-
-  .tree ul {
-    display: flex;
-    justify-content: center;
-    position: relative;
-    padding-top: 40px;
-    flex-wrap: wrap;
+  rect {
+    fill: white;
+    rx: 10;
+    ry: 10;
+    stroke-width: 3px;
+    cursor: pointer;
   }
-
-  .tree li {
-    list-style: none;
-    text-align: center;
-    position: relative;
-    margin: 20px;
+  text {
+    font-size: 12px;
+    text-anchor: middle;
+    font-family: "Segoe UI", sans-serif;
   }
-
-  .tree li::before, .tree li::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    border-top: 2px solid #ccc;
-    width: 50%;
-    height: 20px;
-  }
-
-  .tree li::before { right: 50%; }
-  .tree li::after { left: 50%; }
-  .tree li:only-child::before, .tree li:only-child::after { display: none; }
-
-  .tree li:only-child { padding-top: 0; }
-
-  .tree li > ul::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    border-left: 2px solid #ccc;
-    height: 30px;
-  }
-
-  /* Estilo das caixas */
-  .box {
-    color: #333;
-    background-color: #fff;
-    border: 3px solid #ccc;
-    border-radius: 10px;
-    padding: 10px 20px;
-    display: inline-block;
-    font-weight: 600;
-    min-width: 130px;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-  }
-
-  /* cores por fazenda */
-  .FESP .box { border-color: #f97316; } /* Laranja */
-  .FPA .box { border-color: #22c55e; }  /* Verde */
-  .FSTV .box { border-color: #3b82f6; } /* Azul */
-  .FBG .box, .FEA .box, .FBLA .box { border-color: #8b5cf6; } /* Roxo */
-  .MTR .box { border-color: #eab308; } /* Amarelo */
-
-  .fazenda-titulo {
-    text-align: center;
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 15px;
-  }
-
-  /* Melhor alinhamento visual */
-  .tree {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+  .name { font-weight: bold; }
+  .hidden rect, .hidden text { display: none; }
 </style>
 </head>
 <body>
   <h2>Organograma Interativo de Fazendas</h2>
 
-  <div>
-    <label>Fazenda:</label>
-    <select id="fazendaSelect"></select>
+  <label>Fazenda:</label>
+  <select id="fazendaSelect"></select>
+  <label>Líder:</label>
+  <select id="liderSelect"></select>
 
-    <label>Líder:</label>
-    <select id="liderSelect"></select>
-  </div>
-
-  <div id="wrapper">
-    <div id="organograma"></div>
-  </div>
+  <svg id="svg"></svg>
 
 <script>
+  // -------------------------
+  // Dados de exemplo
+  // -------------------------
   const relacoes = [
     { fazenda:"FESP", lider: "Ana", liderado: "Bruno" },
     { fazenda:"FESP", lider: "Ana", liderado: "Pedro" },
@@ -146,115 +71,170 @@
     { fazenda:"FBG",  lider: "Maria", liderado: "Lara" },
     { fazenda:"FEA",  lider: "Maria", liderado: "Lara" },
     { fazenda:"FBLA", lider: "Maria", liderado: "Lara" },
+    { fazenda:"FBLA", lider: "Kayo", liderado: "Lucas" },
     { fazenda:"FESP", lider: "Maria", liderado: "Lara" }
   ];
 
+  // -------------------------
+  // Preparação dos selects
+  // -------------------------
   const fazendaSelect = document.getElementById("fazendaSelect");
   const liderSelect = document.getElementById("liderSelect");
-  const organogramaDiv = document.getElementById("organograma");
 
-  // Fazendas e líderes únicos
   const fazendasUnicas = [...new Set(relacoes.map(r => r.fazenda))];
   const lideresUnicos = [...new Set(relacoes.map(r => r.lider))];
-  fazendaSelect.innerHTML = "<option value='Todos'>Todos</option>" + fazendasUnicas.map(f => `<option value='${f}'>${f}</option>`).join('');
-  liderSelect.innerHTML = "<option value='Todos'>Todos</option>" + lideresUnicos.map(l => `<option value='${l}'>${l}</option>`).join('');
 
-  // Função constrói árvore hierárquica
-  function buildTree(relacoes, liderInicial = null) {
+  fazendaSelect.innerHTML = "<option value='Todos'>Todos</option>" +
+    fazendasUnicas.map(f => `<option value='${f}'>${f}</option>`).join('');
+  liderSelect.innerHTML = "<option value='Todos'>Todos</option>" +
+    lideresUnicos.map(l => `<option value='${l}'>${l}</option>`).join('');
+
+  // -------------------------
+  // Funções utilitárias
+  // -------------------------
+  function splitChildren(node, maxPerRow = 6) {
+    if (!node.children) return;
+    if (node.children.length > maxPerRow) {
+      const newChildren = [];
+      for (let i = 0; i < node.children.length; i += maxPerRow) {
+        newChildren.push({
+          name: "grupo",
+          hidden: true,
+          children: node.children.slice(i, i + maxPerRow)
+        });
+      }
+      node.children = newChildren;
+    }
+    node.children.forEach(c => splitChildren(c, maxPerRow));
+  }
+
+  function countDescendants(node) {
+    if (!node.children) return 0;
+    return node.children.reduce((sum, c) => sum + 1 + countDescendants(c), 0);
+  }
+
+  const colorMap = {
+    FESP: "#f97316",
+    FPA: "#22c55e",
+    FSTV: "#3b82f6",
+    MTR: "#eab308",
+    FEA: "#8b5cf6",
+    FBG: "#8b5cf6",
+    FBLA: "#8b5cf6"
+  };
+
+  // -------------------------
+  // Função para montar hierarquia
+  // -------------------------
+  function montarHierarquia(fazendaSel, liderSel) {
+    let dadosFiltrados = relacoes;
+
+    if (fazendaSel !== "Todos")
+      dadosFiltrados = dadosFiltrados.filter(r => r.fazenda === fazendaSel);
+
+    if (liderSel !== "Todos")
+      dadosFiltrados = dadosFiltrados.filter(r => r.lider === liderSel);
+
+    // cria mapa líder -> filhos
     const mapa = {};
-    const todos = new Set();
-
-    relacoes.forEach(({lider, liderado}) => {
-      if (!mapa[lider]) mapa[lider] = [];
-      mapa[lider].push(liderado);
-      todos.add(lider);
-      todos.add(liderado);
+    dadosFiltrados.forEach(({fazenda, lider, liderado}) => {
+      if (!mapa[lider]) mapa[lider] = { name: lider, role: "Líder", color: colorMap[fazenda] || "#ccc", children: [] };
+      if (!mapa[liderado]) mapa[liderado] = { name: liderado, role: "Subordinado", color: colorMap[fazenda] || "#ccc" };
+      mapa[lider].children.push(mapa[liderado]);
     });
 
-    let topo = liderInicial;
-    if (!topo) {
-      const liderados = new Set(relacoes.map(r => r.liderado));
-      topo = [...todos].find(p => !liderados.has(p));
-    }
+    // encontra raiz (quem não é liderado)
+    const liderados = new Set(dadosFiltrados.map(r => r.liderado));
+    const topo = Object.values(mapa).find(p => !liderados.has(p.name));
 
     if (!topo) return null;
+    splitChildren(topo, 6);
 
-    function createNode(nome) {
-      const li = document.createElement("li");
-      const div = document.createElement("div");
-      div.className = "box";
-      div.textContent = nome;
-      li.appendChild(div);
-
-      if (mapa[nome]) {
-        const filhos = mapa[nome];
-        for (let i = 0; i < filhos.length; i += 6) {
-          const grupo = filhos.slice(i, i + 6);
-          const ul = document.createElement("ul");
-          grupo.forEach(filho => ul.appendChild(createNode(filho)));
-          li.appendChild(ul);
-        }
-      }
-      return li;
-    }
-
-    const ul = document.createElement("ul");
-    ul.appendChild(createNode(topo));
-    return ul;
+    const root = d3.hierarchy(topo);
+    root.each(d => {
+      d.data.direct = d.children ? d.children.length : 0;
+      d.data.total = countDescendants(d);
+      d.data.indirect = d.data.total - d.data.direct;
+    });
+    return root;
   }
 
-  fazendaSelect.addEventListener("change", render);
-  liderSelect.addEventListener("change", render);
+  // -------------------------
+  // Função para desenhar o gráfico
+  // -------------------------
+function desenhar(fazendaSel, liderSel) {
+  const svg = d3.select("#svg");
+  svg.selectAll("*").remove(); // limpa
+  const g = svg.append("g");
 
-  function render() {
-    organogramaDiv.innerHTML = "";
-    const fz = fazendaSelect.value;
-    const ld = liderSelect.value;
+  // --- espaçamentos ajustados ---
+  const dx = 220;  // horizontal (distância entre irmãos)
+  const dy = 180;  // vertical (distância entre níveis)
+  const tree = d3.tree().nodeSize([dx, dy]);
 
-    if (fz === "Todos" && ld === "Todos") {
-      fazendasUnicas.forEach(f => appendBloco(f, relacoes.filter(r => r.fazenda === f)));
-      return;
-    }
+  const root = montarHierarquia(fazendaSel, liderSel);
+  if (!root) return;
 
-    if (fz !== "Todos" && ld === "Todos") {
-      const lideres = [...new Set(relacoes.filter(r => r.fazenda === fz).map(r => r.lider))];
-      lideres.forEach(l => appendBloco(fz, relacoes.filter(r => r.fazenda === fz && r.lider === l), l));
-      return;
-    }
+  tree(root);
 
-    if (fz === "Todos" && ld !== "Todos") {
-      const fazendasDoLider = [...new Set(relacoes.filter(r => r.lider === ld).map(r => r.fazenda))];
-      fazendasDoLider.forEach(f => appendBloco(f, relacoes.filter(r => r.fazenda === f && r.lider === ld), ld));
-      return;
-    }
+    const links = g.selectAll(".link")
+      .data(root.links())
+      .join("path")
+      .attr("class", "link")
+      .attr("d", d => `
+        M${d.source.x},${d.source.y + 35}
+        V${(d.source.y + d.target.y) / 2}
+        H${d.target.x}
+        V${d.target.y - 35}
+      `);
 
-    if (fz !== "Todos" && ld !== "Todos") {
-      appendBloco(fz, relacoes.filter(r => r.fazenda === fz && r.lider === ld), ld);
-      return;
-    }
+    const nodes = g.selectAll(".node")
+      .data(root.descendants())
+      .join("g")
+      .attr("class", d => d.data.hidden ? "node hidden" : "node")
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+
+    nodes.append("rect")
+      .attr("x", -90).attr("y", -35)
+      .attr("width", 180).attr("height", 70)
+      .attr("stroke", d => d.data.color)
+      .attr("fill", "white")
+      .on("click", (event, d) => {
+        if (d.children) { d._children = d.children; d.children = null; }
+        else if (d._children) { d.children = d._children; d._children = null; }
+        desenhar(fazendaSel, liderSel);
+      });
+
+    nodes.append("text")
+      .attr("class", "name")
+      .attr("dy", "-8")
+      .text(d => d.data.name);
+
+    nodes.append("text")
+      .attr("class", "role")
+      .attr("dy", "10")
+      .text(d => d.data.role || "");
+
+    nodes.append("text")
+      .attr("class", "count")
+      .attr("dy", "26")
+      .text(d => `Diretos: ${d.data.direct} | Indiretos: ${d.data.indirect}`);
+
+    const zoom = d3.zoom()
+      .scaleExtent([0.4, 2])
+      .on("zoom", e => g.attr("transform", e.transform));
+
+    svg.call(zoom).call(zoom.transform, d3.zoomIdentity.translate(window.innerWidth / 2, 60));
   }
 
-  function appendBloco(fazenda, rel, lider=null) {
-    const bloco = document.createElement("div");
-    bloco.className = `tree ${fazenda}`;
-    const titulo = document.createElement("div");
-    titulo.className = "fazenda-titulo";
-    titulo.textContent = lider ? `${fazenda} - ${lider}` : fazenda;
-    bloco.appendChild(titulo);
-    const tree = buildTree(rel, lider);
-    if (tree) bloco.appendChild(tree);
-    organogramaDiv.appendChild(bloco);
-  }
+  // -------------------------
+  // Eventos de seleção
+  // -------------------------
+  fazendaSelect.addEventListener("change", () => desenhar(fazendaSelect.value, liderSelect.value));
+  liderSelect.addEventListener("change", () => desenhar(fazendaSelect.value, liderSelect.value));
 
-  // Ativar Panzoom
-  const panzoom = Panzoom(document.getElementById("organograma"), {
-    maxScale: 3,
-    minScale: 0.5,
-    contain: 'outside',
-  });
-  document.getElementById("wrapper").addEventListener("wheel", panzoom.zoomWithWheel);
-
-  render(); // inicializa
+  // Render inicial
+  desenhar("Todos", "Todos");
 </script>
 </body>
 </html>

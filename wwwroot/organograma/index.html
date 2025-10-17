@@ -6,146 +6,164 @@
   <title>Organograma com Contagem de Subordinados</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <link rel="stylesheet" href="styles.css">
-  
+
 </head>
 <body>
-<svg id="svg"></svg>
-<script>
-  // Função que quebra filhos em grupos de até N
-  function splitChildren(node, maxPerRow=5) {
-    if (!node.children) return;
-    if (node.children.length > maxPerRow) {
-      const newChildren = [];
-      for (let i=0; i<node.children.length; i+=maxPerRow) {
-        newChildren.push({
-          name: "grupo",
-          hidden: true,
-          children: node.children.slice(i, i+maxPerRow)
-        });
+  <svg id="svg"></svg>
+  <script>
+    // Função que quebra filhos em grupos de até N
+    function splitChildren(node, maxPerRow = 5) {
+      if (!node.children) return;
+      if (node.children.length > maxPerRow) {
+        const newChildren = [];
+        for (let i = 0; i < node.children.length; i += maxPerRow) {
+          newChildren.push({
+            name: "grupo",
+            hidden: true,
+            children: node.children.slice(i, i + maxPerRow)
+          });
+        }
+        node.children = newChildren;
       }
-      node.children = newChildren;
+      node.children.forEach(c => splitChildren(c, maxPerRow));
     }
-    node.children.forEach(c => splitChildren(c, maxPerRow));
-  }
 
-  // Estrutura com Nome + Cargo
-  const data = {
-    name: "Maria Souza", role:"Direção Geral", color:"#c9302c", children:[
-      { name:"João Lima", role:"Direção Administrativa", color:"#28a745", children:[
-        { name:"Paula Torres", role:"Administração", color:"#28a745",
-          children:[{name:"Carlos Silva", role:"Auxiliar Administrativo", color:"#28a745",
-            children:[{name:"Ana Costa", role:"Aprendiz", color:"#28a745"}]}] },
-        { name:"Fernanda Alves", role:"Núcleo de Comunicação", color:"#28a745",
-          children:[{name:"Roberto Dias", role:"Gestora", color:"#28a745",
-            children:[{name:"Bruna Melo", role:"Estagiário", color:"#28a745"}]}] },
-        { name:"Sérgio Gomes", role:"Facilitadora de RH", color:"#28a745", children:[{name:"Auxiliar", role:"RH", color:"#28a745"}] },
-        { name:"Marta Ramos", role:"Limpeza e Manutenção", color:"#28a745", children:[{name:"Auxiliar", role:"Serviços", color:"#28a745"}] },
-        { name:"Clara Pinto", role:"Serviço Social", color:"#28a745" }
-      ]},
-      { name:"Pe. Antônio", role:"Direção Espiritual", color:"#ff8c00", children:[
-        { name:"Equipe Pastoral", role:"Pastoral", color:"#ff8c00", children:[{name:"Auxiliar", role:"Apoio", color:"#ff8c00"}] }
-      ]},
-      { name:"Beatriz Nunes", role:"Direção Pedagógica", color:"#007bff", children:[
-        { name:"Lucas Prado", role:"Coordenação Pedagógica", color:"#007bff",
-          children:[{name:"Equipe de Educadores", role:"Educadores", color:"#007bff",
-            children:[{name:"Estagiárias", role:"Estágio", color:"#007bff"},{name:"Monitores", role:"Monitoria", color:"#007bff"}]}] },
-        { name:"Camila Rocha", role:"Biblioteca", color:"#007bff", children:[{name:"Auxiliar de Bibliotecário", role:"Biblioteca", color:"#007bff"}] },
-        { name:"Felipe Martins", role:"Secretaria", color:"#007bff", children:[{name:"Auxiliar", role:"Secretaria", color:"#007bff"}] },
-        { name:"Núcleo Didático", role:"Didático", color:"#007bff" },
-        { name:"Equipe Projetos", role:"Pedagogia de Projetos", color:"#007bff", children:[{name:"Auxiliar", role:"Projetos", color:"#007bff"}] },
-        { name:"Equipe Psicoped", role:"Psicopedagogia", color:"#007bff", children:[{name:"Psicólogas", role:"Psicologia", color:"#007bff"}] }
-      ]}
-    ]
-  };
+    // Estrutura com Nome + Cargo
+    const data = {
+      name: "Maria Souza", role: "Direção Geral", color: "#c9302c", children: [
+        {
+          name: "João Lima", role: "Direção Administrativa", color: "#28a745", children: [
+            {
+              name: "Paula Torres", role: "Administração", color: "#28a745",
+              children: [{
+                name: "Carlos Silva", role: "Auxiliar Administrativo", color: "#28a745",
+                children: [{ name: "Ana Costa", role: "Aprendiz", color: "#28a745" }]
+              }]
+            },
+            {
+              name: "Fernanda Alves", role: "Núcleo de Comunicação", color: "#28a745",
+              children: [{
+                name: "Roberto Dias", role: "Gestora", color: "#28a745",
+                children: [{ name: "Bruna Melo", role: "Estagiário", color: "#28a745" }]
+              }]
+            },
+            { name: "Sérgio Gomes", role: "Facilitadora de RH", color: "#28a745", children: [{ name: "Auxiliar", role: "RH", color: "#28a745" }] },
+            { name: "Marta Ramos", role: "Limpeza e Manutenção", color: "#28a745", children: [{ name: "Auxiliar", role: "Serviços", color: "#28a745" }] },
+            { name: "Clara Pinto", role: "Serviço Social", color: "#28a745" }
+          ]
+        },
+        {
+          name: "Pe. Antônio", role: "Direção Espiritual", color: "#ff8c00", children: [
+            { name: "Equipe Pastoral", role: "Pastoral", color: "#ff8c00", children: [{ name: "Auxiliar", role: "Apoio", color: "#ff8c00" }] }
+          ]
+        },
+        {
+          name: "Beatriz Nunes", role: "Direção Pedagógica", color: "#007bff", children: [
+            {
+              name: "Lucas Prado", role: "Coordenação Pedagógica", color: "#007bff",
+              children: [{
+                name: "Equipe de Educadores", role: "Educadores", color: "#007bff",
+                children: [{ name: "Estagiárias", role: "Estágio", color: "#007bff" }, { name: "Monitores", role: "Monitoria", color: "#007bff" }]
+              }]
+            },
+            { name: "Camila Rocha", role: "Biblioteca", color: "#007bff", children: [{ name: "Auxiliar de Bibliotecário", role: "Biblioteca", color: "#007bff" }] },
+            { name: "Felipe Martins", role: "Secretaria", color: "#007bff", children: [{ name: "Auxiliar", role: "Secretaria", color: "#007bff" }] },
+            { name: "Núcleo Didático", role: "Didático", color: "#007bff" },
+            { name: "Equipe Projetos", role: "Pedagogia de Projetos", color: "#007bff", children: [{ name: "Auxiliar", role: "Projetos", color: "#007bff" }] },
+            { name: "Equipe Psicoped", role: "Psicopedagogia", color: "#007bff", children: [{ name: "Psicólogas", role: "Psicologia", color: "#007bff" }] }
+          ]
+        }
+      ]
+    };
 
-  // aplica quebra automática
-  splitChildren(data, 5);
+    // aplica quebra automática
+    splitChildren(data, 5);
 
-  const svg = d3.select("#svg");
-  const g = svg.append("g");
+    const svg = d3.select("#svg");
+    const g = svg.append("g");
 
-  const dx = 140;   // vertical
-  const dy = 260;   // horizontal
-  const tree = d3.tree().nodeSize([dy, dx]);
-  let root = d3.hierarchy(data);
+    const dx = 140;   // vertical
+    const dy = 260;   // horizontal
+    const tree = d3.tree().nodeSize([dy, dx]);
+    let root = d3.hierarchy(data);
 
-  // Função auxiliar para contar descendentes
-  function countDescendants(node) {
-    if (!node.children) return 0;
-    return node.children.reduce((sum, c) => sum + 1 + countDescendants(c), 0);
-  }
+    // Função auxiliar para contar descendentes
+    function countDescendants(node) {
+      if (!node.children) return 0;
+      return node.children.reduce((sum, c) => sum + 1 + countDescendants(c), 0);
+    }
 
-  // Calcula contagem de diretos/indiretos
-  root.each(d => {
-    d.data.direct = d.children ? d.children.length : 0;
-    d.data.total = countDescendants(d);
-    d.data.indirect = d.data.total - d.data.direct;
-  });
+    // Calcula contagem de diretos/indiretos
+    root.each(d => {
+      d.data.direct = d.children ? d.children.length : 0;
+      d.data.total = countDescendants(d);
+      d.data.indirect = d.data.total - d.data.direct;
+    });
 
-  function update(source) {
-    tree(root);
+    function update(source) {
+      tree(root);
 
-    // Links
-    const link = g.selectAll(".link")
-      .data(root.links(), d => d.target.data.name);
+      // Links
+      const link = g.selectAll(".link")
+        .data(root.links(), d => d.target.data.name);
 
-    link.join("path")
-      .attr("class","link")
-      .attr("d", d => `
-        M${d.source.x},${d.source.y+35}
-        V${(d.source.y+d.target.y)/2}
+      link.join("path")
+        .attr("class", "link")
+        .attr("d", d => `
+        M${d.source.x},${d.source.y + 35}
+        V${(d.source.y + d.target.y) / 2}
         H${d.target.x}
-        V${d.target.y-35}
+        V${d.target.y - 35}
       `);
 
-    // Nós
-    const node = g.selectAll(".node")
-      .data(root.descendants(), d => d.data.name);
+      // Nós
+      const node = g.selectAll(".node")
+        .data(root.descendants(), d => d.data.name);
 
-    const nodeEnter = node.join("g")
-      .attr("class", d => d.data.hidden ? "node hidden" : "node")
-      .attr("transform", d => `translate(${d.x},${d.y})`);
+      const nodeEnter = node.join("g")
+        .attr("class", d => d.data.hidden ? "node hidden" : "node")
+        .attr("transform", d => `translate(${d.x},${d.y})`);
 
-    nodeEnter.append("rect")
-      .attr("x", -95).attr("y", -35)
-      .attr("width", 190).attr("height", 70)
-      .attr("stroke", d => d.data.color || "#333")
-      .on("click", (event, d) => {
-        if (d.children) {
-          d._children = d.children;
-          d.children = null;
-        } else if (d._children) {
-          d.children = d._children;
-          d._children = null;
-        }
-        update(d);
-      });
+      nodeEnter.append("rect")
+        .attr("x", -95).attr("y", -35)
+        .attr("width", 190).attr("height", 70)
+        .attr("stroke", d => d.data.color || "#333")
+        .on("click", (event, d) => {
+          if (d.children) {
+            d._children = d.children;
+            d.children = null;
+          } else if (d._children) {
+            d.children = d._children;
+            d._children = null;
+          }
+          update(d);
+        });
 
-    nodeEnter.append("text")
-      .attr("class","name")
-      .attr("dy", "-8")
-      .text(d => d.data.name);
+      nodeEnter.append("text")
+        .attr("class", "name")
+        .attr("dy", "-8")
+        .text(d => d.data.name);
 
-    nodeEnter.append("text")
-      .attr("class","role")
-      .attr("dy", "10")
-      .text(d => d.data.role || "");
+      nodeEnter.append("text")
+        .attr("class", "role")
+        .attr("dy", "10")
+        .text(d => d.data.role || "");
 
-    nodeEnter.append("text")
-      .attr("class","count")
-      .attr("dy", "26")
-      .text(d => `Diretos: ${d.data.direct} | Indiretos: ${d.data.indirect}`);
-  }
+      nodeEnter.append("text")
+        .attr("class", "count")
+        .attr("dy", "26")
+        .text(d => `Diretos: ${d.data.direct} | Indiretos: ${d.data.indirect}`);
+    }
 
-  update(root);
+    update(root);
 
-  // Pan/zoom
-  svg.call(d3.zoom()
-    .scaleExtent([0.5, 2])
-    .on("zoom", (event) => g.attr("transform", event.transform))
-  );
+    // Pan/zoom
+    svg.call(d3.zoom()
+      .scaleExtent([0.5, 2])
+      .on("zoom", (event) => g.attr("transform", event.transform))
+    );
 
-  g.attr("transform", `translate(${window.innerWidth/2},60)`);
-</script>
+    g.attr("transform", `translate(${window.innerWidth / 2},60)`);
+  </script>
 </body>
 </html>
