@@ -222,13 +222,35 @@
 
 
             function centralizarNoNo(d) {
-                const escala = 1.0; // pode ajustar para dar zoom no nó (ex: 1.2)
-                const xCentro = width / 2 - (d.x - width / 2) * escala;
-                // const yCentro = height / 2 - d.y * escala;
-                const yCentro = 10 * escala
-                const t = d3.zoomIdentity.translate(xCentro, yCentro).scale(escala);
-                svg.transition().duration(600).call(zoom.transform, t);
+                const svgWidth = +svg.attr("width");
+                const svgHeight = +svg.attr("height");
+                const escalaAtual = d3.zoomTransform(svg.node()).k;
+
+                // Coordenadas do nó clicado
+                const xNo = d.x;
+                const yNo = d.y;
+
+                // Coordenadas do pai (ou o próprio nó, se não houver pai)
+                const xPai = d.parent ? d.parent.x : d.x;
+                const yPai = d.parent ? d.parent.y : d.y;
+
+                // Calcula o ponto médio entre o nó e o pai
+                const xCentro = (xNo + xPai) / 2;
+                const yCentro = (yNo + yPai) / 2;
+
+                // Calcula translação para centralizar o ponto médio no meio do SVG
+                const translateX = svgWidth / 2 - xCentro * escalaAtual;
+                const translateY = svgHeight / 2 - yCentro * escalaAtual;
+
+                // Aplica transição suave no zoom
+                svg.transition()
+                    .duration(750)
+                    .call(
+                        zoom.transform,
+                        d3.zoomIdentity.translate(translateX, translateY).scale(escalaAtual)
+                    );
             }
+
 
 
             root.x0 = 0;
