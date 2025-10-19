@@ -3,123 +3,404 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Ler Excel e Montar Hierarquia (Área → Líder → Liderados)</title>
-    <!-- Biblioteca SheetJS -->
+    <title>Organograma Fazenda → Área → Líder → Liderados</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 30px;
-            line-height: 1.5;
+            background: #f4f4f4;
+            margin: 20px;
+            overflow: hidden;
         }
 
         h2 {
-            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
         }
 
-        input {
-            margin-bottom: 15px;
+        svg {
+            width: 100%;
+            height: 85vh;
+            border: 1px solid #ccc;
+            background: #fff;
         }
 
-        pre {
-            background: #1e1e1e;
-            color: #dcdcdc;
-            padding: 15px;
-            border-radius: 8px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
+        .node rect {
+            stroke: #4285f4;
+            stroke-width: 1.2px;
+            rx: 10;
+            ry: 10;
+        }
+
+        .node text {
+            font-size: 12px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+
+        .link {
+            fill: none;
+            stroke: #999;
+            stroke-width: 1.2px;
+        }
+
+        .painel {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .painel button,
+        .painel select {
+            padding: 6px 12px;
+            margin: 3px;
         }
     </style>
 </head>
 
 <body>
-    <h2>📘 Ler Excel e montar hierarquia (Área → Líder → Liderados)</h2>
-    <input type="file" id="inputExcel" accept=".xlsx, .xls">
-    <pre id="saida">Selecione um arquivo Excel com colunas: Área, Líder e Liderado.</pre>
+    <h2>📘 Organograma Fazenda → Área → Líder → Liderados</h2>
+
+    <div class="painel">
+        <input type="file" id="inputExcel" accept=".xlsx, .xls">
+        <select id="filtroArea">
+            <option value="">Todas as Áreas</option>
+        </select>
+        <br>
+        <button id="expandir">Expandir Todos</button>
+        <button id="recolher">Recolher Todos</button>
+        <button id="expandirFazenda">Expandir até Fazenda</button>
+        <button id="recolherFazenda">Recolher até Fazenda</button>
+    </div>
+
+    <svg id="svg"></svg>
 
     <script>
+        const colunaFazenda = "Fazenda";
+        const colunaArea = "Setor";
+        const colunaLider = "Líder";
+        const colunaLiderado = "Liderado";
+
+        // ==========================================================
+        // LEITURA DO EXCEL E MONTAGEM DA HIERARQUIA
+        // ==========================================================
         document.getElementById("inputExcel").addEventListener("change", function (e) {
             const arquivo = e.target.files[0];
             if (!arquivo) return;
 
             const leitor = new FileReader();
-
             leitor.onload = function (evento) {
-                try {
-                    const dados = new Uint8Array(evento.target.result);
-                    const workbook = XLSX.read(dados, { type: "array" });
+                const dados = new Uint8Array(evento.target.result);
+                const workbook = XLSX.read(dados, { type: "array" });
+                const planilha = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(planilha);
 
-                    // Lê a primeira planilha
-                    const nomePrimeira = workbook.SheetNames[0];
-                    const planilha = workbook.Sheets[nomePrimeira];
+                // Filtra linhas válidas
+                const linhasValidas = json.filter(l =>
+                    l[colunaFazenda] && l[colunaArea] && l[colunaLider] && l[colunaLiderado]
+                );
 
-                    // Converte para JSON
-                    const json = XLSX.utils.sheet_to_json(planilha);
+                // --- Preenche o filtro de área ---
+                const filtroArea = document.getElementById("filtroArea");
+                const areasUnicas = [...new Set(linhasValidas.map(l => l[colunaArea].toString().trim()))];
+                filtroArea.innerHTML = '<option value="">Todas as Áreas</option>';
+                areasUnicas.forEach(area => {
+                    const opt = document.createElement("option");
+                    opt.value = area;
+                    opt.textContent = area;
+                    filtroArea.appendChild(opt);
+                });
 
-                    // Nomes das colunas (ajuste conforme seu Excel)
-                    const colunaFazenda = "Fazenda"
-                    const colunaArea = "Setor";
-                    const colunaLider = "Líder";
-                    const colunaLiderado = "Liderado";
+                // === AGRUPAR ===
+                const fazendasMap = new Map();
+                linhasValidas.forEach(linha => {
+                    const fazenda = linha[colunaFazenda].toString().trim();
+                    const area = linha[colunaArea].toString().trim();
+                    const lider = linha[colunaLider].toString().trim();
+                    const liderado = linha[colunaLiderado].toString().trim();
 
-                    // Filtra linhas válidas
-                    const linhasValidas = json.filter(l =>
-                        l[colunaFazenda] && l[colunaArea] && l[colunaLider] && l[colunaLiderado]
-                    );
+                    if (!fazendasMap.has(fazenda)) fazendasMap.set(fazenda, new Map());
+                    const areasMap = fazendasMap.get(fazenda);
 
-                    // Agrupa os dados por área
-                    const fazendasMap = new Map();
+                    if (!areasMap.has(area)) areasMap.set(area, new Map());
+                    const lideresMap = areasMap.get(area);
 
-                    linhasValidas.forEach(linha => {
-                        const fazenda = linha[colunaFazenda].toString().trim()
-                        const area = linha[colunaArea].toString().trim();
-                        const lider = linha[colunaLider].toString().trim();
-                        const liderado = linha[colunaLiderado].toString().trim();
+                    if (!lideresMap.has(lider)) lideresMap.set(lider, []);
+                    lideresMap.get(lider).push(liderado);
+                });
 
-                        if (!fazendasMap.has(fazenda)) {
-                            fazendasMap.set(fazenda, new Map());
-                        }
-                        const areasMap = fazendasMap.get(fazenda);
+                // === CONVERTER PARA OBJETO HIERÁRQUICO ===
+                const dadosHierarquia = {
+                    name: "Grupo Michesl",
+                    children: Array.from(fazendasMap.entries()).map(([fazenda, areasMap]) => ({
+                        name: fazenda,
+                        children: Array.from(areasMap.entries()).map(([area, lideresMap]) => ({
+                            name: area,
+                            children: Array.from(lideresMap.entries()).map(([lider, filhos]) => ({
+                                name: lider,
+                                children: filhos.map(f => ({ name: f }))
+                            }))
+                        }))
+                    }))
+                };
 
-                        if (!areasMap.has(area)) {
-                            areasMap.set(area, new Map());
-                        }
-                        const lideresMap = areasMap.get(area);
+                desenharOrganograma(dadosHierarquia);
 
-                        // Se o líder ainda não existe, cria
-                        if (!lideresMap.has(lider)) {
-                            lideresMap.set(lider, []);
-                        }
+                // === FILTRO POR ÁREA ===
+                filtroArea.addEventListener("change", function () {
+                    const areaSelecionada = this.value;
 
-                        // Adiciona o liderado ao líder correspondente
-                        lideresMap.get(lider).push(liderado);
-                    });
+                    if (!areaSelecionada) {
+                        desenharOrganograma(dadosHierarquia);
+                        return;
+                    }
 
-                    // Converte o Map para uma estrutura de objetos
-                    const estrutura = Array.from(fazendasMap.entries()).map(([fazenda, areasMap]) => {
-                        const areas = Array.from(areasMap.entries()).map(([area, lideresMap]) => {
-                            const lideres = Array.from(lideresMap.entries()).map(([nome, filhos]) => ({
-                                nome,
-                                filhos
-                            }));
-                            return { area, lideres };
-                        });
-                        return { fazenda, areas };
-                    })
+                    const fazendasFiltradas = dadosHierarquia.children.map(fazenda => {
+                        const areasFiltradas = fazenda.children.filter(a => a.name === areaSelecionada);
+                        return areasFiltradas.length > 0
+                            ? { ...fazenda, children: areasFiltradas }
+                            : null;
+                    }).filter(Boolean);
 
-                    // Exibe no HTML formatado
-                    document.getElementById("saida").textContent =
-                        JSON.stringify(estrutura, null, 2);
+                    const dadosFiltrados = {
+                        name: dadosHierarquia.name,
+                        children: fazendasFiltradas
+                    };
 
-                } catch (erro) {
-                    document.getElementById("saida").textContent =
-                        "⚠️ Erro ao processar arquivo: " + erro.message;
-                }
+                    desenharOrganograma(dadosFiltrados);
+                });
             };
-
             leitor.readAsArrayBuffer(arquivo);
         });
+
+        // ==========================================================
+        // DESENHAR ORGANOGRAMA COM D3
+        // ==========================================================
+        function desenharOrganograma(dados) {
+            const svg = d3.select("#svg");
+            svg.selectAll("*").remove();
+
+            const width = window.innerWidth;
+            const height = window.innerHeight * 0.85;
+            const nodeWidth = 150;
+            const nodeHeight = 70;
+            const vSpacing = 120;
+            const hSpacing = 60;
+            const fontFamily = "Arial, sans-serif";
+            const fontSize = 11;
+
+            const g = svg.append("g").attr("transform", `translate(${width / 2},60)`);
+            const root = d3.hierarchy(dados);
+
+            // Colapsa inicialmente abaixo do nível 1 (mantém fazenda visível)
+            root.descendants().forEach(d => {
+                if (d.depth > 1) {
+                    d.hiddenChildren = d.children;
+                    d.children = null;
+                }
+            });
+
+            const treeLayout = d3.tree()
+                .nodeSize([nodeWidth + hSpacing, nodeHeight + vSpacing])
+                .separation((a, b) => (a.parent === b.parent ? 1.4 : 2));
+
+            const zoom = d3.zoom()
+                .scaleExtent([0.3, 2])
+                .on("zoom", e => g.attr("transform", e.transform));
+            svg.call(zoom);
+
+            // Centraliza automaticamente o gráfico
+            function centralizar() {
+                const bbox = g.node().getBBox();
+                const escala = 0.9;
+                const xCentro = width / 2 - (bbox.x + bbox.width / 2);
+                const yInicio = 60;
+                const t = d3.zoomIdentity.translate(xCentro, yInicio).scale(escala);
+                svg.transition().duration(600).call(zoom.transform, t);
+            }
+
+
+            function centralizarNoNo(d) {
+                const escala = 1.0; // pode ajustar para dar zoom no nó (ex: 1.2)
+                const xCentro = width / 2 - (d.x - width / 2) * escala;
+                // const yCentro = height / 2 - d.y * escala;
+                const yCentro = 10 * escala
+                const t = d3.zoomIdentity.translate(xCentro, yCentro).scale(escala);
+                svg.transition().duration(600).call(zoom.transform, t);
+            }
+
+
+            root.x0 = 0;
+            root.y0 = 0;
+
+            update(root);
+
+            // ---- Botões de expandir/recolher ----
+            document.getElementById("expandir").onclick = () => expandCollapseAll(true);
+            document.getElementById("recolher").onclick = () => expandCollapseAll(false);
+            document.getElementById("expandirFazenda").onclick = () => expandCollapseNivel(true, 1);
+            document.getElementById("recolherFazenda").onclick = () => expandCollapseNivel(false, 1);
+
+            // Expande ou recolhe todos
+            function expandCollapseAll(expandir) {
+                root.descendants().forEach(d => {
+                    if (expandir && d.hiddenChildren) {
+                        d.children = d.hiddenChildren; d.hiddenChildren = null;
+                    } else if (!expandir && d.children) {
+                        d.hiddenChildren = d.children; d.children = null;
+                    }
+                });
+                update(root);
+            }
+
+            // Expande/recolhe até um nível específico (ex: nível fazenda)
+            function expandCollapseNivel(expandir, nivel) {
+                root.descendants().forEach(d => {
+                    if (d.depth <= nivel) {
+                        if (expandir && d.hiddenChildren) {
+                            d.children = d.hiddenChildren;
+                            d.hiddenChildren = null;
+                        }
+                    } else {
+                        if (!expandir && d.children) {
+                            d.hiddenChildren = d.children;
+                            d.children = null;
+                        }
+                    }
+                });
+                update(root);
+            }
+
+            // Atualiza e redesenha
+            function update(source) {
+                treeLayout(root);
+
+                // LINKS
+                const link = g.selectAll(".link")
+                    .data(root.links(), d => d.target.data.name);
+
+                const linkEnter = link.enter().insert("path", "g")
+                    .attr("class", "link")
+                    .attr("d", d => {
+                        const o = { x: source.x0 - width / 2, y: source.y0 };
+                        return diagonal({ source: o, target: o });
+                    });
+
+                linkEnter.merge(link).transition().duration(500)
+                    .attr("d", d => diagonal({
+                        source: { x: d.source.x - width / 2, y: d.source.y },
+                        target: { x: d.target.x - width / 2, y: d.target.y }
+                    }));
+
+                link.exit().transition().duration(500)
+                    .attr("d", d => {
+                        const o = { x: source.x - width / 2, y: source.y };
+                        return diagonal({ source: o, target: o });
+                    }).remove();
+
+                // NODES
+                const node = g.selectAll(".node")
+                    .data(root.descendants(), d => d.data.name);
+
+                const nodeEnter = node.enter().append("g")
+                    .attr("class", "node")
+                    .attr("transform", d => `translate(${source.x0 - width / 2},${source.y0})`)
+                    .on("click", (event, d) => {
+                        toggleChildren(d);
+                        centralizarNoNo(d);
+                    });
+
+                nodeEnter.append("rect")
+                    .attr("x", -nodeWidth / 2)
+                    .attr("y", -nodeHeight / 2)
+                    .attr("width", nodeWidth)
+                    .attr("height", nodeHeight)
+                    .attr("fill", d => {
+                        if (d.depth === 1) return "#b2dfdb";
+                        if (d.depth === 2) return "#bbdefb";
+                        if (d.depth === 3) return "#c8e6c9";
+                        return "#fff9c4";
+                    });
+
+                nodeEnter.append("text")
+                    .attr("font-size", fontSize)
+                    .attr("font-family", fontFamily)
+                    .each(function (d) {
+                        const t = d3.select(this);
+                        wrapText(t, d.data.name, nodeWidth - 10);
+                        const tspans = t.selectAll("tspan");
+                        const n = tspans.size();
+                        const offset = -(n * 14) / 2 + 7;
+                        tspans.each(function (_, i) {
+                            d3.select(this)
+                                .attr("x", 0)
+                                .attr("y", offset + i * 14);
+                        });
+                    });
+
+                nodeEnter.merge(node).transition().duration(500)
+                    .attr("transform", d => `translate(${d.x - width / 2},${d.y})`);
+
+                node.exit().transition().duration(500)
+                    .attr("transform", d => `translate(${source.x - width / 2},${source.y})`)
+                    .remove();
+
+                root.eachBefore(d => { d.x0 = d.x; d.y0 = d.y; });
+
+                centralizar(); // 👈 sempre centraliza após desenhar
+            }
+
+            function diagonal(d) {
+                return d3.linkVertical().x(d => d.x).y(d => d.y)(d);
+            }
+
+            function toggleChildren(d) {
+                if (d.children) {
+                    d.hiddenChildren = d.children;
+                    d.children = null;
+                } else {
+                    d.children = d.hiddenChildren;
+                    d.hiddenChildren = null;
+                }
+                update(d);
+            }
+        }
+
+        // ==========================================================
+        // QUEBRA DE TEXTO DENTRO DOS NÓS
+        // ==========================================================
+        function wrapText(textSelection, text, width) {
+            const words = text.split(/\s+/).reverse();
+            let line = [];
+            let lineNumber = 0;
+            const lineHeight = 1.1;
+            const y = textSelection.attr("y") || 0;
+            const dy = parseFloat(textSelection.attr("dy") || 0);
+            let tspan = textSelection.text(null)
+                .append("tspan")
+                .attr("x", 0)
+                .attr("y", y)
+                .attr("dy", dy + "em");
+
+            let word;
+            while ((word = words.pop())) {
+                line.push(word);
+                tspan.text(line.join(" "));
+                if (tspan.node().getComputedTextLength() > width) {
+                    line.pop();
+                    tspan.text(line.join(" "));
+                    line = [word];
+                    tspan = textSelection.append("tspan")
+                        .attr("x", 0)
+                        .attr("y", y)
+                        .attr("dy", ++lineNumber * lineHeight + dy + "em")
+                        .text(word);
+                }
+            }
+
+            if (lineNumber >= 2) textSelection.attr("font-size", 10);
+        }
     </script>
 </body>
 
