@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Função reutilizável de mini grid</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    .wrap { display:grid; grid-template-columns: repeat(2, 260px); gap:16px; justify-content:center; padding:24px; }
+    svg { border:1px solid #ddd; background:#fff; }
+  </style>
+</head>
+<body>
+  <div class="wrap"></div>
+
+  <script>
+    function makeMiniGrid(selection, data, {
+      width = 240, height = 200,
+      maxPorLinha = 2,
+      passoX = 100, passoY = 100,
+      baseX = 60, baseY = 60,
+      raio = d => d / 2,
+      fill = () => "#4e79a7"
+    } = {}) {
+      const svg = selection.append("svg").attr("width", width).attr("height", height);
+
+      svg.selectAll("circle")
+        .data(data)
+        .join("circle")
+        .attr("cx", (_, i) => baseX + (i % maxPorLinha) * passoX)
+        .attr("cy", (_, i) => baseY + Math.floor(i / maxPorLinha) * passoY)
+        .attr("r", raio)
+        .attr("fill", fill);
+
+      return svg;
+    }
+
+    const dados = [10, 20, 30, 40];
+    const wrap  = d3.select(".wrap");
+
+    // Cria 4 grids (cada um com a mesma config)
+    for (let i = 0; i < 4; i++) {
+      makeMiniGrid(wrap, dados, {
+        fill: () => d3.interpolateSpectral(Math.random())
+      });
+    }
+  </script>
+</body>
+</html>
+

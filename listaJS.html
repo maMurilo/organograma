@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Ler Excel e Montar Hierarquia (Área → Líder → Liderados)</title>
+    <!-- Biblioteca SheetJS -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 30px;
+            line-height: 1.5;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        input {
+            margin-bottom: 15px;
+        }
+
+        pre {
+            background: #1e1e1e;
+            color: #dcdcdc;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>📘 Ler Excel e montar hierarquia (Área → Líder → Liderados)</h2>
+    <input type="file" id="inputExcel" accept=".xlsx, .xls">
+    <pre id="saida">Selecione um arquivo Excel com colunas: Área, Líder e Liderado.</pre>
+
+    <script>
+        document.getElementById("inputExcel").addEventListener("change", function (e) {
+            const arquivo = e.target.files[0];
+            if (!arquivo) return;
+
+            const leitor = new FileReader();
+
+            leitor.onload = function (evento) {
+                try {
+                    const dados = new Uint8Array(evento.target.result);
+                    const workbook = XLSX.read(dados, { type: "array" });
+
+                    // Lê a primeira planilha
+                    const nomePrimeira = workbook.SheetNames[0];
+                    const planilha = workbook.Sheets[nomePrimeira];
+
+                    // Converte para JSON
+                    const json = XLSX.utils.sheet_to_json(planilha);
+
+                    // Nomes das colunas (ajuste conforme seu Excel)
+                    const colunaFazenda = "Fazenda"
+                    const colunaArea = "Setor";
+                    const colunaLider = "Líder";
+                    const colunaLiderado = "Liderado";
+
+                    // Filtra linhas válidas
+                    const linhasValidas = json.filter(l =>
+                        l[colunaFazenda] && l[colunaArea] && l[colunaLider] && l[colunaLiderado]
+                    );
+
+                    // Agrupa os dados por área
+                    const fazendasMap = new Map();
+
+                    linhasValidas.forEach(linha => {
+                        const fazenda = linha[colunaFazenda].toString().trim()
+                        const area = linha[colunaArea].toString().trim();
+                        const lider = linha[colunaLider].toString().trim();
+                        const liderado = linha[colunaLiderado].toString().trim();
+
+                        if (!fazendasMap.has(fazenda)) {
+                            fazendasMap.set(fazenda, new Map());
+                        }
+                        const areasMap = fazendasMap.get(fazenda);
+
+                        if (!areasMap.has(area)) {
+                            areasMap.set(area, new Map());
+                        }
+                        const lideresMap = areasMap.get(area);
+
+                        // Se o líder ainda não existe, cria
+                        if (!lideresMap.has(lider)) {
+                            lideresMap.set(lider, []);
+                        }
+
+                        // Adiciona o liderado ao líder correspondente
+                        lideresMap.get(lider).push(liderado);
+                    });
+
+                    // Converte o Map para uma estrutura de objetos
+                    const estrutura = Array.from(fazendasMap.entries()).map(([fazenda, areasMap]) => {
+                        const areas = Array.from(areasMap.entries()).map(([area, lideresMap]) => {
+                            const lideres = Array.from(lideresMap.entries()).map(([nome, filhos]) => ({
+                                nome,
+                                filhos
+                            }));
+                            return { area, lideres };
+                        });
+                        return { fazenda, areas };
+                    })
+
+                    // Exibe no HTML formatado
+                    document.getElementById("saida").textContent =
+                        JSON.stringify(estrutura, null, 2);
+
+                } catch (erro) {
+                    document.getElementById("saida").textContent =
+                        "⚠️ Erro ao processar arquivo: " + erro.message;
+                }
+            };
+
+            leitor.readAsArrayBuffer(arquivo);
+        });
+    </script>
+</body>
+
+</html>

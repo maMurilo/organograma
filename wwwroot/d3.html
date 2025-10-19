@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>4 SVGs com grids 2x2</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { margin: 0; padding: 24px; background:#f7f7f7; }
+    .wrap {
+      display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
+    }
+    svg { border:1px solid #ddd; background:#fff; }
+  </style>
+</head>
+<body>
+  <div class="wrap"></div>
+
+  <script>
+    const numSVGs = 4;          // queremos 4 SVGs
+    const dados = [10, 20, 30, 40]; // 4 círculos (o valor aqui uso como “peso” p/ raio)
+    const maxPorLinha = 2;      // 2 por linha → vira grid 2x2
+    const passoX = 100;         // espaçamento horizontal entre colunas
+    const passoY = 100;         // espaçamento vertical entre linhas
+    const baseX  = 60;          // deslocamento para não “colar” na borda
+    const baseY  = 60;
+
+    const wrap = d3.select(".wrap");
+
+    for (let s = 0; s < numSVGs; s++) {
+      const svg = wrap.append("svg").attr("width", 240).attr("height", 200);
+
+      svg.selectAll("circle")
+        .data(dados)
+        .join("circle")
+        .attr("cx", (_, i) => baseX + (i % maxPorLinha) * passoX)           // coluna: 0,1,0,1
+        .attr("cy", (_, i) => baseY + Math.floor(i / maxPorLinha) * passoY) // linha: 0,0,1,1
+        .attr("r", d => d / 2)                                              // raio a partir do dado
+        .attr("fill", () => d3.interpolateTurbo(Math.random()));            // cor “aleatória”
+    }
+  </script>
+</body>
+</html>

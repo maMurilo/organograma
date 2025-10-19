@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Organograma com Linhas Retas D3</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: "Segoe UI", sans-serif;
+        }
+
+        svg {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .link {
+            stroke: #777;
+            stroke-width: 2px;
+            fill: none;
+        }
+
+        .node rect {
+            stroke: #555;
+            stroke-width: 1.2px;
+            rx: 10;
+            ry: 10;
+            width: 80px;
+            height: 80px;
+        }
+
+        .node text {
+            fill: #333;
+            font-size: 12px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            width: 70px;
+        }
+    </style>
+</head>
+
+<body>
+    <svg width="800" height="500"></svg>
+
+    <script>
+        // --- 1. Estrutura hierárquica ---
+        const dados = {
+            name: "Diretor Geral",
+            children: [
+                {
+                    name: "Gerente de Produção",
+                    children: [
+                        { name: "Supervisor de Campo" },
+                        { name: "Supervisor de Colheita" }
+                    ]
+                },
+                {
+                    name: "Gerente Administrativo",
+                    children: [
+                        { name: "Financeiro" },
+                        {
+                            name: "Teste",
+                            children: [
+                                { name: "Teste" },
+                                { name: "Test2" },
+                                { name: "Teste3" }
+                            ]
+                        },
+                        {
+                            name: "Recursos Humanos",
+                            children: [
+                                { name: "Teste" },
+                                { name: "Test2" },
+                                { name: "Teste3" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // --- 2. Configuração do SVG e árvore ---
+        const svg = d3.select("svg");
+        const largura = +svg.attr("width");
+        const altura = +svg.attr("height");
+        const g = svg.append("g").attr("transform", "translate(50,50)");
+
+        const root = d3.hierarchy(dados);
+        const treeLayout = d3.tree().size([largura - 100, altura - 100]);
+        treeLayout(root);
+
+        // --- 3. Desenha linhas retas entre os nós ---
+        const links = g.selectAll(".link")
+            .data(root.links())
+            .join("g");
+
+        // Linha vertical (do pai até o mesmo X do filho)
+        links.append("line")
+            .attr("class", "link")
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y + 40) // base do card pai
+            .attr("x2", d => d.source.x)
+            .attr("y2", d => d.target.y - 40); // topo do card filho
+
+        // Linha horizontal (para conectar irmãos)
+        links.append("line")
+            .attr("class", "link")
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.target.y - 40)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y - 40);
+
+        // --- 4. Desenha os nós (cards 80x80) ---
+        const node = g.selectAll(".node")
+            .data(root.descendants())
+            .join("g")
+            .attr("class", "node")
+            .attr("transform", d => `translate(${d.x - 40}, ${d.y - 40})`);
+
+        node.append("rect")
+            .attr("fill", d =>
+                d.depth === 0 ? "#ffcc00" :
+                    d.depth === 1 ? "#91d5ff" :
+                        "#b7eb8f"
+            );
+
+        node.append("text")
+            .attr("x", 40)
+            .attr("y", 40)
+            .text(d => d.data.name)
+            .call(wrapText, 70);
+
+        // --- 5. Função auxiliar: quebra texto dentro do card ---
+        function wrapText(textSelection, larguraMax) {
+            textSelection.each(function () {
+                const text = d3.select(this);
+                const palavras = text.text().split(/\s+/).reverse();
+                let linha = [];
+                let linhaNum = 0;
+                const lineHeight = 1.1;
+                const x = text.attr("x");
+                const y = text.attr("y");
+                let tspan = text.text(null)
+                    .append("tspan")
+                    .attr("x", x)
+                    .attr("y", y)
+                    .attr("dy", "0em");
+                let palavra;
+                while (palavra = palavras.pop()) {
+                    linha.push(palavra);
+                    tspan.text(linha.join(" "));
+                    if (tspan.node().getComputedTextLength() > larguraMax) {
+                        linha.pop();
+                        tspan.text(linha.join(" "));
+                        linha = [palavra];
+                        tspan = text.append("tspan")
+                            .attr("x", x)
+                            .attr("y", y)
+                            .attr("dy", ++linhaNum * lineHeight + "em")
+                            .text(palavra);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
