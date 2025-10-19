@@ -221,35 +221,38 @@
             }
 
 
-            function centralizarNoNo(d) {
-                const svgWidth = +svg.attr("width");
-                const svgHeight = +svg.attr("height");
-                const escalaAtual = d3.zoomTransform(svg.node()).k;
+            function centralizarNoNo(event, d) {
+    const bbox = svg.node().getBoundingClientRect();
+    const svgWidth = bbox.width;
+    const svgHeight = bbox.height;
 
-                // Coordenadas do nó clicado
-                const xNo = d.x;
-                const yNo = d.y;
+    const transformAtual = d3.zoomTransform(svg.node());
+    const escalaAtual = transformAtual.k;
 
-                // Coordenadas do pai (ou o próprio nó, se não houver pai)
-                const xPai = d.parent ? d.parent.x : d.x;
-                const yPai = d.parent ? d.parent.y : d.y;
+    // Captura a posição do clique em coordenadas de tela
+    const [mouseX, mouseY] = d3.pointer(event, svg.node());
 
-                // Calcula o ponto médio entre o nó e o pai
-                const xCentro = (xNo + xPai) / 2;
-                const yCentro = (yNo + yPai) / 2;
+    // Calcula a posição atual da área de desenho
+    const translateXAtual = transformAtual.x;
+    const translateYAtual = transformAtual.y;
 
-                // Calcula translação para centralizar o ponto médio no meio do SVG
-                const translateX = svgWidth / 2 - xCentro * escalaAtual;
-                const translateY = svgHeight / 2 - yCentro * escalaAtual;
+    // Calcula a diferença entre o clique e o centro do SVG
+    const dx = svgWidth / 2 - mouseX;
+    const dy = svgHeight / 2 - mouseY;
 
-                // Aplica transição suave no zoom
-                svg.transition()
-                    .duration(750)
-                    .call(
-                        zoom.transform,
-                        d3.zoomIdentity.translate(translateX, translateY).scale(escalaAtual)
-                    );
-            }
+    // Atualiza a translação mantendo o zoom
+    const novoTranslateX = translateXAtual + dx;
+    const novoTranslateY = translateYAtual + dy;
+
+    // Aplica o movimento com animação
+    svg.transition()
+        .duration(700)
+        .call(
+            zoom.transform,
+            d3.zoomIdentity.translate(novoTranslateX, novoTranslateY).scale(escalaAtual)
+        );
+}
+
 
 
 
@@ -330,7 +333,7 @@
                     .attr("transform", d => `translate(${source.x0 - width / 2},${source.y0})`)
                     .on("click", (event, d) => {
                         toggleChildren(d);
-                        centralizarNoNo(d);
+                        centralizarNoNo(event,d);
                     });
 
                 nodeEnter.append("rect")
