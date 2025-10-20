@@ -66,8 +66,8 @@
         <select id="filtroArea">
             <option value="">Todas as Áreas</option>
         </select>
-        <select id="filtroArea">
-            <option value="">Todas as Áreas</option>
+        <select id="filtroFazenda">
+            <option value="">Todas as Fazendas</option>
         </select>
         <br>
         <button id="expandir">Expandir Todos</button>
@@ -106,6 +106,21 @@
                     opt.textContent = area;
                     filtroArea.appendChild(opt);
                 });
+
+                const filtroFazenda = document.getElementById("filtroFazenda");
+                const fazendasUnicas = [...new Set(linhasValidas.map(l => l[colunaFazenda].toString().trim()))];
+                filtroFazenda.innerHTML = '<option value="">Todas as Fazendas</options>';
+                fazendasUnicas.forEach(fazenda =>{
+                    const opt = document.createElement("option");
+                    opt.value = fazenda;
+                    opt.textContent = fazenda;
+                    filtroFazenda.appendChild(opt) ;
+                }
+
+                )        
+
+
+
 
                 const fazendasMap = new Map();
                 linhasValidas.forEach(linha => {
