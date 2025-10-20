@@ -66,6 +66,9 @@
         <select id="filtroArea">
             <option value="">Todas as Áreas</option>
         </select>
+        <select id="filtroArea">
+            <option value="">Todas as Áreas</option>
+        </select>
         <br>
         <button id="expandir">Expandir Todos</button>
         <button id="recolher">Recolher Todos</button>
@@ -208,25 +211,48 @@
 
             layoutVertical(root);
             update(root);
-            centralizar();
+            // centralizar();
+            centralizarOrganograma();
 
             // ---------- BOTÕES ----------
-            document.getElementById("expandir").onclick = () => expandCollapseAll(true);
-            document.getElementById("recolher").onclick = () => expandCollapseAll(false);
+            document.getElementById("expandir").onclick = () => {
+                expandCollapseAll(true);
+                centralizarOrganograma(); // sempre centraliza o nó raiz
+            };
+            document.getElementById("recolher").onclick = () => {
+                expandCollapseAll(false);
+                centralizarOrganograma(); // idem
+            };
 
-            function expandCollapseAll(expandir) {
-                root.descendants().forEach(d => {
-                    if (expandir && d._children) {
-                        d.children = d._children;
-                        d._children = null;
-                    } else if (!expandir && d.children) {
-                        d._children = d.children;
-                        d.children = null;
-                    }
-                });
-                layoutVertical(root);
-                update(root);
+
+            // ---------- CENTRALIZAR ORGANOGRAMA AO MEIO ----------
+            function centralizarOrganograma() {
+                // Seleciona SVG e grupo principal
+                const svgWidth = parseFloat(svg.style("width"));
+                const svgHeight = parseFloat(svg.style("height"));
+
+                // Pega o nó raiz (nível 0)
+                const rootNode = root; // já definido dentro de desenharOrganograma()
+
+                // Pega o zoom atual
+                const transform = d3.zoomTransform(svg.node());
+                const scale = transform.k || 1;
+
+                // Calcula posição do nó raiz
+                const xRoot = rootNode.x - width / 2;
+                const yRoot = rootNode.y;
+
+                // Centraliza o nó raiz no meio do SVG
+                const x = svgWidth / 2 - xRoot * scale;
+                const y = svgHeight / 2 - yRoot * scale;
+
+                // Aplica o movimento com transição suave
+                svg.transition()
+                    .duration(800)
+                    .call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(scale));
             }
+
+
 
             function centralizar() {
                 const bbox = g.node().getBBox();
@@ -248,7 +274,7 @@
 
             // ---------- QUEBRA DE TEXTO ----------
             function wrapText(textSelection, text, width) {
-                const maxChars = Math.floor(width / 8); // ajuste fino: 8px por caractere em média
+                const maxChars = Math.floor(width / 8);
                 const words = text.split(/\s+/);
                 let lines = [];
                 let currentLine = "";
@@ -263,7 +289,6 @@
                 });
                 if (currentLine) lines.push(currentLine);
 
-                // Trunca se tiver mais de 3 linhas
                 if (lines.length > 3) {
                     lines = lines.slice(0, 3);
                     let last = lines[2];
@@ -271,7 +296,7 @@
                 }
 
                 textSelection.text(null);
-                const lineHeight = 1.2; // espaçamento relativo
+                const lineHeight = 1.2;
                 const totalHeight = lines.length * 14;
                 const offsetY = -totalHeight / 2 + 6;
 
@@ -282,8 +307,6 @@
                         .text(line);
                 });
             }
-
-
 
             // ---------- UPDATE ----------
             function update(source) {
@@ -354,6 +377,20 @@
             }
 
             // ---------- EXPAND/COLLAPSE ----------
+            function expandCollapseAll(expandir) {
+                root.descendants().forEach(d => {
+                    if (expandir && d._children) {
+                        d.children = d._children;
+                        d._children = null;
+                    } else if (!expandir && d.children) {
+                        d._children = d.children;
+                        d.children = null;
+                    }
+                });
+                layoutVertical(root);
+                update(root);
+            }
+
             function toggleChildren(d) {
                 if (d.children) {
                     d._children = d.children;
