@@ -1,432 +1,330 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Organograma Fazenda → Área → Líder → Liderados</title>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+  <meta charset="UTF-8">
+  <title>Organograma Fazenda → Área → Líder → Liderados</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f4;
-            margin: 20px;
-            overflow: hidden;
-        }
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 20px;
+      overflow: hidden;
+    }
 
-        h2 {
-            margin-bottom: 10px;
-            text-align: center;
-        }
+    h2 {
+      text-align: center;
+    }
 
-        svg {
-            width: 100%;
-            height: 85vh;
-            border: 1px solid #ccc;
-            background: #fff;
-        }
+    svg {
+      width: 100%;
+      height: 85vh;
+      border: 1px solid #ccc;
+      background: #fff;
+    }
 
-        .node rect {
-            stroke: #4285f4;
-            stroke-width: 1.2px;
-            rx: 10;
-            ry: 10;
-        }
+    .node rect {
+      stroke: #4285f4;
+      stroke-width: 1.2px;
+      rx: 10;
+      ry: 10;
+    }
 
-        .node text {
-            font-size: 12px;
-            text-anchor: middle;
-            dominant-baseline: middle;
-        }
+    .node text {
+      font-size: 12px;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
 
-        .link {
-            fill: none;
-            stroke: #999;
-            stroke-width: 1.2px;
-        }
+    .link {
+      fill: none;
+      stroke: #999;
+      stroke-width: 1.2px;
+    }
 
-        .painel {
-            text-align: center;
-            margin-bottom: 10px;
-        }
+    .painel {
+      text-align: center;
+      margin-bottom: 10px;
+    }
 
-        .painel button,
-        .painel select {
-            padding: 6px 12px;
-            margin: 3px;
-        }
-    </style>
+    .painel button,
+    .painel select {
+      padding: 6px 12px;
+      margin: 3px;
+    }
+  </style>
 </head>
-
 <body>
-    <h2>📘 Organograma Fazenda → Área → Líder → Liderados</h2>
+  <h2>📘 Organograma Fazenda → Área → Líder → Liderados</h2>
 
-    <div class="painel">
-        <input type="file" id="inputExcel" accept=".xlsx, .xls">
-        <select id="filtroArea">
-            <option value="">Todas as Áreas</option>
-        </select>
-        <br>
-        <button id="expandir">Expandir Todos</button>
-        <button id="recolher">Recolher Todos</button>
-        <button id="expandirFazenda">Expandir até Fazenda</button>
-        <button id="recolherFazenda">Recolher até Fazenda</button>
-    </div>
+  <div class="painel">
+    <input type="file" id="inputExcel" accept=".xlsx, .xls">
+    <select id="filtroArea">
+      <option value="">Todas as Áreas</option>
+    </select>
+    <br>
+    <button id="expandir">Expandir Todos</button>
+    <button id="recolher">Recolher Todos</button>
+  </div>
 
-    <svg id="svg"></svg>
+  <svg id="svg"></svg>
 
-    <script>
-        const colunaFazenda = "Fazenda";
-        const colunaArea = "Setor";
-        const colunaLider = "Líder";
-        const colunaLiderado = "Liderado";
+  <script>
+    const colunaFazenda = "Fazenda";
+    const colunaArea = "Setor";
+    const colunaLider = "Líder";
+    const colunaLiderado = "Liderado";
 
-        // ==========================================================
-        // LEITURA DO EXCEL E MONTAGEM DA HIERARQUIA
-        // ==========================================================
-        document.getElementById("inputExcel").addEventListener("change", function (e) {
-            const arquivo = e.target.files[0];
-            if (!arquivo) return;
+    document.getElementById("inputExcel").addEventListener("change", function (e) {
+      const arquivo = e.target.files[0];
+      if (!arquivo) return;
 
-            const leitor = new FileReader();
-            leitor.onload = function (evento) {
-                const dados = new Uint8Array(evento.target.result);
-                const workbook = XLSX.read(dados, { type: "array" });
-                const planilha = workbook.Sheets[workbook.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(planilha);
+      const leitor = new FileReader();
+      leitor.onload = function (evento) {
+        const dados = new Uint8Array(evento.target.result);
+        const workbook = XLSX.read(dados, { type: "array" });
+        const planilha = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(planilha);
 
-                // Filtra linhas válidas
-                const linhasValidas = json.filter(l =>
-                    l[colunaFazenda] && l[colunaArea] && l[colunaLider] && l[colunaLiderado]
-                );
+        const linhasValidas = json.filter(l =>
+          l[colunaFazenda] && l[colunaArea] && l[colunaLider] && l[colunaLiderado]
+        );
 
-                // --- Preenche o filtro de área ---
-                const filtroArea = document.getElementById("filtroArea");
-                const areasUnicas = [...new Set(linhasValidas.map(l => l[colunaArea].toString().trim()))];
-                filtroArea.innerHTML = '<option value="">Todas as Áreas</option>';
-                areasUnicas.forEach(area => {
-                    const opt = document.createElement("option");
-                    opt.value = area;
-                    opt.textContent = area;
-                    filtroArea.appendChild(opt);
-                });
-
-                // === AGRUPAR ===
-                const fazendasMap = new Map();
-                linhasValidas.forEach(linha => {
-                    const fazenda = linha[colunaFazenda].toString().trim();
-                    const area = linha[colunaArea].toString().trim();
-                    const lider = linha[colunaLider].toString().trim();
-                    const liderado = linha[colunaLiderado].toString().trim();
-
-                    if (!fazendasMap.has(fazenda)) fazendasMap.set(fazenda, new Map());
-                    const areasMap = fazendasMap.get(fazenda);
-
-                    if (!areasMap.has(area)) areasMap.set(area, new Map());
-                    const lideresMap = areasMap.get(area);
-
-                    if (!lideresMap.has(lider)) lideresMap.set(lider, []);
-                    lideresMap.get(lider).push(liderado);
-                });
-
-                // === CONVERTER PARA OBJETO HIERÁRQUICO ===
-                const dadosHierarquia = {
-                    name: "Grupo Michesl",
-                    children: Array.from(fazendasMap.entries()).map(([fazenda, areasMap]) => ({
-                        name: fazenda,
-                        children: Array.from(areasMap.entries()).map(([area, lideresMap]) => ({
-                            name: area,
-                            children: Array.from(lideresMap.entries()).map(([lider, filhos]) => ({
-                                name: lider,
-                                children: filhos.map(f => ({ name: f }))
-                            }))
-                        }))
-                    }))
-                };
-
-                desenharOrganograma(dadosHierarquia);
-
-                // === FILTRO POR ÁREA ===
-                filtroArea.addEventListener("change", function () {
-                    const areaSelecionada = this.value;
-
-                    if (!areaSelecionada) {
-                        desenharOrganograma(dadosHierarquia);
-                        return;
-                    }
-
-                    const fazendasFiltradas = dadosHierarquia.children.map(fazenda => {
-                        const areasFiltradas = fazenda.children.filter(a => a.name === areaSelecionada);
-                        return areasFiltradas.length > 0
-                            ? { ...fazenda, children: areasFiltradas }
-                            : null;
-                    }).filter(Boolean);
-
-                    const dadosFiltrados = {
-                        name: dadosHierarquia.name,
-                        children: fazendasFiltradas
-                    };
-
-                    desenharOrganograma(dadosFiltrados);
-                });
-            };
-            leitor.readAsArrayBuffer(arquivo);
+        const filtroArea = document.getElementById("filtroArea");
+        const areasUnicas = [...new Set(linhasValidas.map(l => l[colunaArea].toString().trim()))];
+        filtroArea.innerHTML = '<option value="">Todas as Áreas</option>';
+        areasUnicas.forEach(area => {
+          const opt = document.createElement("option");
+          opt.value = area;
+          opt.textContent = area;
+          filtroArea.appendChild(opt);
         });
 
-        // ==========================================================
-        // DESENHAR ORGANOGRAMA COM D3
-        // ==========================================================
-        function desenharOrganograma(dados) {
-            const svg = d3.select("#svg");
-            svg.selectAll("*").remove();
+        const fazendasMap = new Map();
+        linhasValidas.forEach(linha => {
+          const fazenda = linha[colunaFazenda].toString().trim();
+          const area = linha[colunaArea].toString().trim();
+          const lider = linha[colunaLider].toString().trim();
+          const liderado = linha[colunaLiderado].toString().trim();
 
-            const width = window.innerWidth;
-            const height = window.innerHeight * 0.85;
-            const nodeWidth = 150;
-            const nodeHeight = 70;
-            const vSpacing = 120;
-            const hSpacing = 60;
-            const fontFamily = "Arial, sans-serif";
-            const fontSize = 11;
+          if (!fazendasMap.has(fazenda)) fazendasMap.set(fazenda, new Map());
+          const areasMap = fazendasMap.get(fazenda);
 
-            const g = svg.append("g").attr("transform", `translate(${width / 2},60)`);
-            const root = d3.hierarchy(dados);
+          if (!areasMap.has(area)) areasMap.set(area, new Map());
+          const lideresMap = areasMap.get(area);
 
-            // Colapsa inicialmente abaixo do nível 1 (mantém fazenda visível)
-            root.descendants().forEach(d => {
-                if (d.depth > 1) {
-                    d.hiddenChildren = d.children;
-                    d.children = null;
-                }
-            });
+          if (!lideresMap.has(lider)) lideresMap.set(lider, []);
+          lideresMap.get(lider).push(liderado);
+        });
 
-            const treeLayout = d3.tree()
-                .nodeSize([nodeWidth + hSpacing, nodeHeight + vSpacing])
-                .separation((a, b) => (a.parent === b.parent ? 1.4 : 2));
+        const dadosHierarquia = {
+          name: "Grupo Michels",
+          children: Array.from(fazendasMap.entries()).map(([fazenda, areasMap]) => ({
+            name: fazenda,
+            children: Array.from(areasMap.entries()).map(([area, lideresMap]) => ({
+              name: area,
+              children: Array.from(lideresMap.entries()).map(([lider, filhos]) => ({
+                name: lider,
+                children: filhos.map(f => ({ name: f }))
+              }))
+            }))
+          }))
+        };
 
-            const zoom = d3.zoom()
-                .scaleExtent([0.3, 2])
-                .on("zoom", e => g.attr("transform", e.transform));
-            svg.call(zoom);
+        desenharOrganograma(dadosHierarquia);
 
-            // Centraliza automaticamente o gráfico
-            function centralizar() {
-                const bbox = g.node().getBBox();
-                const escala = 0.9;
-                const xCentro = width / 2 - (bbox.x + bbox.width / 2);
-                const yInicio = 60;
-                const t = d3.zoomIdentity.translate(xCentro, yInicio).scale(escala);
-                svg.transition().duration(600).call(zoom.transform, t);
-            }
+        filtroArea.addEventListener("change", function () {
+          const areaSelecionada = this.value;
+          if (!areaSelecionada) {
+            desenharOrganograma(dadosHierarquia);
+            return;
+          }
 
+          const fazendasFiltradas = dadosHierarquia.children.map(fazenda => {
+            const areasFiltradas = fazenda.children.filter(a => a.name === areaSelecionada);
+            return areasFiltradas.length > 0
+              ? { ...fazenda, children: areasFiltradas }
+              : null;
+          }).filter(Boolean);
 
-            function centralizarNoNo(event, d) {
-    const bbox = svg.node().getBoundingClientRect();
-    const svgWidth = bbox.width;
-    const svgHeight = bbox.height;
+          const dadosFiltrados = {
+            name: dadosHierarquia.name,
+            children: fazendasFiltradas
+          };
 
-    const transformAtual = d3.zoomTransform(svg.node());
-    const escalaAtual = transformAtual.k;
+          desenharOrganograma(dadosFiltrados);
+        });
+      };
+      leitor.readAsArrayBuffer(arquivo);
+    });
 
-    // Captura a posição do clique em coordenadas de tela
-    const [mouseX, mouseY] = d3.pointer(event, svg.node());
+    // ==========================================================
+    // DESENHAR ORGANOGRAMA
+    // ==========================================================
+    function desenharOrganograma(dados) {
+      const svg = d3.select("#svg");
+      svg.selectAll("*").remove();
 
-    // Calcula a posição atual da área de desenho
-    const translateXAtual = transformAtual.x;
-    const translateYAtual = transformAtual.y;
+      const width = window.innerWidth;
+      const nodeWidth = 150;
+      const nodeHeight = 70;
 
-    // Calcula a diferença entre o clique e o centro do SVG
-    const dx = svgWidth / 2 - mouseX;
-    const dy = svgHeight / 2 - mouseY;
+      const g = svg.append("g").attr("transform", `translate(${width / 2}, 60)`);
+      const root = d3.hierarchy(dados);
 
-    // Atualiza a translação mantendo o zoom
-    const novoTranslateX = translateXAtual + dx;
-    const novoTranslateY = translateYAtual + dy;
+      let i = 0;
+      root.each(d => { d.id = ++i; d.x0 = 0; d.y0 = 0; });
 
-    // Aplica o movimento com animação
-    svg.transition()
-        .duration(700)
-        .call(
-            zoom.transform,
-            d3.zoomIdentity.translate(novoTranslateX, novoTranslateY).scale(escalaAtual)
-        );
-}
+      const zoom = d3.zoom()
+        .scaleExtent([0.3, 2])
+        .on("zoom", e => g.attr("transform", e.transform));
+      svg.call(zoom);
 
+      // ---------- LAYOUT VERTICAL ----------
+      function layoutVertical(node, nivel = 0, xInicio = 0) {
+        const larguraNo = nodeWidth + 120;
+        const alturaNo = nodeHeight + 120;
+        node.y = nivel * alturaNo;
+        node.x = xInicio;
 
+        if (!node.children || node.children.length === 0) return larguraNo;
 
+        let larguraTotal = 0;
+        node.children.forEach((filho) => {
+          const larguraSub = layoutVertical(filho, nivel + 1, xInicio + larguraTotal);
+          larguraTotal += larguraSub;
+        });
 
-            root.x0 = 0;
-            root.y0 = 0;
+        const larguraPai = larguraTotal - larguraNo;
+        const centroFilhos = xInicio + larguraPai / 2;
+        node.x = centroFilhos;
 
-            update(root);
+        return larguraTotal;
+      }
 
-            // ---- Botões de expandir/recolher ----
-            document.getElementById("expandir").onclick = () => expandCollapseAll(true);
-            document.getElementById("recolher").onclick = () => expandCollapseAll(false);
-            document.getElementById("expandirFazenda").onclick = () => expandCollapseNivel(true, 1);
-            document.getElementById("recolherFazenda").onclick = () => expandCollapseNivel(false, 1);
+      layoutVertical(root);
+      update(root);
+      centralizar();
 
-            // Expande ou recolhe todos
-            function expandCollapseAll(expandir) {
-                root.descendants().forEach(d => {
-                    if (expandir && d.hiddenChildren) {
-                        d.children = d.hiddenChildren; d.hiddenChildren = null;
-                    } else if (!expandir && d.children) {
-                        d.hiddenChildren = d.children; d.children = null;
-                    }
-                });
-                update(root);
-            }
+      // ---------- BOTÕES ----------
+      document.getElementById("expandir").onclick = () => expandCollapseAll(true);
+      document.getElementById("recolher").onclick = () => expandCollapseAll(false);
 
-            // Expande/recolhe até um nível específico (ex: nível fazenda)
-            function expandCollapseNivel(expandir, nivel) {
-                root.descendants().forEach(d => {
-                    if (d.depth <= nivel) {
-                        if (expandir && d.hiddenChildren) {
-                            d.children = d.hiddenChildren;
-                            d.hiddenChildren = null;
-                        }
-                    } else {
-                        if (!expandir && d.children) {
-                            d.hiddenChildren = d.children;
-                            d.children = null;
-                        }
-                    }
-                });
-                update(root);
-            }
+      function expandCollapseAll(expandir) {
+        root.descendants().forEach(d => {
+          if (expandir && d._children) {
+            d.children = d._children;
+            d._children = null;
+          } else if (!expandir && d.children) {
+            d._children = d.children;
+            d.children = null;
+          }
+        });
+        layoutVertical(root);
+        update(root);
+      }
 
-            // Atualiza e redesenha
-            function update(source) {
-                treeLayout(root);
+      function centralizar() {
+        const bbox = g.node().getBBox();
+        const escala = 0.9;
+        const xCentro = width / 2 - (bbox.x + bbox.width / 2);
+        const yInicio = 60;
+        const t = d3.zoomIdentity.translate(xCentro, yInicio).scale(escala);
+        svg.transition().duration(600).call(zoom.transform, t);
+      }
 
-                // LINKS
-                const link = g.selectAll(".link")
-                    .data(root.links(), d => d.target.data.name);
+      // ---------- LINHAS (COTOVELOS RETOS) ----------
+      function diagonal(d) {
+        const x1 = d.source.x - width / 2;
+        const y1 = d.source.y + nodeHeight / 2;
+        const x2 = d.target.x - width / 2;
+        const y2 = d.target.y - nodeHeight / 2;
+        return `M${x1},${y1} L${x1},${(y1 + y2) / 2} L${x2},${(y1 + y2) / 2} L${x2},${y2}`;
+      }
 
-                const linkEnter = link.enter().insert("path", "g")
-                    .attr("class", "link")
-                    .attr("d", d => {
-                        const o = { x: source.x0 - width / 2, y: source.y0 };
-                        return diagonal({ source: o, target: o });
-                    });
+      // ---------- UPDATE ----------
+      function update(source) {
+        layoutVertical(root);
+        const nodes = root.descendants();
+        const links = root.links();
 
-                linkEnter.merge(link).transition().duration(500)
-                    .attr("d", d => diagonal({
-                        source: { x: d.source.x - width / 2, y: d.source.y },
-                        target: { x: d.target.x - width / 2, y: d.target.y }
-                    }));
+        // JOIN NODES
+        const node = g.selectAll("g.node").data(nodes, d => d.id);
 
-                link.exit().transition().duration(500)
-                    .attr("d", d => {
-                        const o = { x: source.x - width / 2, y: source.y };
-                        return diagonal({ source: o, target: o });
-                    }).remove();
+        const nodeEnter = node.enter().append("g")
+          .attr("class", "node")
+          .attr("transform", d => `translate(${source.x0 - width / 2},${source.y0})`)
+          .on("click", (event, d) => {
+            if (d.children || d._children) toggleChildren(d);
+          });
 
-                // NODES
-                const node = g.selectAll(".node")
-                    .data(root.descendants(), d => d.data.name);
+        nodeEnter.append("rect")
+          .attr("x", -nodeWidth / 2)
+          .attr("y", -nodeHeight / 2)
+          .attr("width", nodeWidth)
+          .attr("height", nodeHeight)
+          .attr("fill", d => {
+            if (d.depth === 0) return "#fff9c4";
+            if (d.depth === 1) return "#b2dfdb";
+            if (d.depth === 2) return "#bbdefb";
+            if (d.depth === 3) return "#c8e6c9";
+            return "#e1bee7";
+          });
 
-                const nodeEnter = node.enter().append("g")
-                    .attr("class", "node")
-                    .attr("transform", d => `translate(${source.x0 - width / 2},${source.y0})`)
-                    .on("click", (event, d) => {
-                        toggleChildren(d);
-                        centralizarNoNo(event,d);
-                    });
+        nodeEnter.append("text")
+          .text(d => d.data.name)
+          .attr("font-size", 12)
+          .attr("x", 0)
+          .attr("y", 0);
 
-                nodeEnter.append("rect")
-                    .attr("x", -nodeWidth / 2)
-                    .attr("y", -nodeHeight / 2)
-                    .attr("width", nodeWidth)
-                    .attr("height", nodeHeight)
-                    .attr("fill", d => {
-                        if (d.depth === 1) return "#b2dfdb";
-                        if (d.depth === 2) return "#bbdefb";
-                        if (d.depth === 3) return "#c8e6c9";
-                        return "#fff9c4";
-                    });
+        const nodeUpdate = nodeEnter.merge(node);
+        nodeUpdate.transition().duration(500)
+          .attr("transform", d => `translate(${d.x - width / 2},${d.y})`);
 
-                nodeEnter.append("text")
-                    .attr("font-size", fontSize)
-                    .attr("font-family", fontFamily)
-                    .each(function (d) {
-                        const t = d3.select(this);
-                        wrapText(t, d.data.name, nodeWidth - 10);
-                        const tspans = t.selectAll("tspan");
-                        const n = tspans.size();
-                        const offset = -(n * 14) / 2 + 7;
-                        tspans.each(function (_, i) {
-                            d3.select(this)
-                                .attr("x", 0)
-                                .attr("y", offset + i * 14);
-                        });
-                    });
+        node.exit().transition().duration(500)
+          .attr("transform", d => `translate(${source.x - width / 2},${source.y})`)
+          .remove();
 
-                nodeEnter.merge(node).transition().duration(500)
-                    .attr("transform", d => `translate(${d.x - width / 2},${d.y})`);
+        // JOIN LINKS
+        const link = g.selectAll("path.link")
+          .data(links, d => d.target.id);
 
-                node.exit().transition().duration(500)
-                    .attr("transform", d => `translate(${source.x - width / 2},${source.y})`)
-                    .remove();
+        link.enter().insert("path", "g")
+          .attr("class", "link")
+          .attr("d", () => diagonal({
+            source: { x: source.x, y: source.y },
+            target: { x: source.x, y: source.y }
+          }))
+          .merge(link)
+          .transition().duration(500)
+          .attr("d", d => diagonal(d));
 
-                root.eachBefore(d => { d.x0 = d.x; d.y0 = d.y; });
+        link.exit().transition().duration(500)
+          .attr("d", () => diagonal({
+            source: { x: source.x, y: source.y },
+            target: { x: source.x, y: source.y }
+          }))
+          .remove();
 
-                centralizar(); // 👈 sempre centraliza após desenhar
-            }
+        nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
+      }
 
-            function diagonal(d) {
-                return d3.linkVertical().x(d => d.x).y(d => d.y)(d);
-            }
-
-            function toggleChildren(d) {
-                if (d.children) {
-                    d.hiddenChildren = d.children;
-                    d.children = null;
-                } else {
-                    d.children = d.hiddenChildren;
-                    d.hiddenChildren = null;
-                }
-                update(d);
-            }
+      // ---------- EXPAND/COLLAPSE ----------
+      function toggleChildren(d) {
+        if (d.children) {
+          d._children = d.children;
+          d.children = null;
+        } else if (d._children) {
+          d.children = d._children;
+          d._children = null;
+        } else {
+          return;
         }
-
-        // ==========================================================
-        // QUEBRA DE TEXTO DENTRO DOS NÓS
-        // ==========================================================
-        function wrapText(textSelection, text, width) {
-            const words = text.split(/\s+/).reverse();
-            let line = [];
-            let lineNumber = 0;
-            const lineHeight = 1.1;
-            const y = textSelection.attr("y") || 0;
-            const dy = parseFloat(textSelection.attr("dy") || 0);
-            let tspan = textSelection.text(null)
-                .append("tspan")
-                .attr("x", 0)
-                .attr("y", y)
-                .attr("dy", dy + "em");
-
-            let word;
-            while ((word = words.pop())) {
-                line.push(word);
-                tspan.text(line.join(" "));
-                if (tspan.node().getComputedTextLength() > width) {
-                    line.pop();
-                    tspan.text(line.join(" "));
-                    line = [word];
-                    tspan = textSelection.append("tspan")
-                        .attr("x", 0)
-                        .attr("y", y)
-                        .attr("dy", ++lineNumber * lineHeight + dy + "em")
-                        .text(word);
-                }
-            }
-
-            if (lineNumber >= 2) textSelection.attr("font-size", 10);
-        }
-    </script>
+        update(d);
+      }
+    }
+  </script>
 </body>
-
 </html>
