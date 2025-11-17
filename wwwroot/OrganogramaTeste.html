@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Organograma Fazenda → Área → Líder → Liderados</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 20px;
+      overflow: hidden;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    svg {
+      width: 100%;
+      height: 85vh;
+      border: 1px solid #ccc;
+      background: #fff;
+    }
+
+    .node rect {
+      stroke: #4285f4;
+      stroke-width: 1.2px;
+      rx: 10;
+      ry: 10;
+    }
+
+    .node text {
+      font-size: 12px;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    .link {
+      fill: none;
+      stroke: #999;
+      stroke-width: 1.2px;
+    }
+
+    .painel {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .painel button,
+    .painel select {
+      padding: 6px 12px;
+      margin: 3px;
+    }
+  </style>
+</head>
+
+<body>
+
+
+  <script>
+    const colunaFazenda = "Fazenda";
+    const colunaArea = "Setor";
+    const colunaLider = "Lider";
+    const colunaLiderado = "Liderado";
+
+    let dadosHierarquiaGlobal = null;
+    let linhasValidasGlobal = [];
+
+    // ==========================================================
+    // 1️⃣ Carrega o Excel automaticamente (sem input)
+    // ==========================================================
+    async function carregarExcelAutomatico() {
+      try {
+        const response = await fetch("Base3.xlsx");
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const planilha = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(planilha);
+        processarDadosExcel(json);
+      } catch (erro) {
+        console.error("Erro ao carregar o Excel:", erro);
+        alert("❌ Não foi possível carregar o arquivo dados.xlsx.\nColoque-o na mesma pasta do HTML e abra com Live Server.");
+      }
+    }
+
+    // ==========================================================
+    // 2️⃣ Processa dados do Excel
+    // ==========================================================
+    function processarDadosExcel(json) {
+
+
+      // Monta hierarquia
+      const fazendasMap = new Map();
+      const diretoria = new Map();
+
+
+      json.sort((a, b) => a.Nivel.localeCompare(b.Nivel));
+
+      // }
+      json.forEach(linha => {
+        const fazenda = linha[colunaFazenda].toString().trim();
+        const area = linha[colunaArea].toString().trim();
+        const lider = linha[colunaLider].toString().trim();
+        const liderado = linha[colunaLiderado].toString().trim();
+
+        const Nivel = linha["Nivel"];
+
+  
+
+
+        if (!fazendasMap.has(fazenda)) fazendasMap.set(fazenda, new Map());
+        const areasMap = fazendasMap.get(fazenda);
+
+
+          if (!diretoria.has(lider) && Nivel =="N1") diretoria.set(lider, new Map())
+          const gerente = diretoria.get(lider);
+
+
+          if (!gerente.has(lider) && Nivel =="N2") gerente.set(lider, new Map());
+
+       
+
+
+   
+      
+ 
+
+
+
+        
+        if (!areasMap.has(area)) areasMap.set(area, new Map());
+
+
+
+
+        const lideresMap = areasMap.get(area);
+        if (!lideresMap.has(lider)) lideresMap.set(lider, []);
+        lideresMap.get(lider).push(liderado);
+
+
+
+      });
+
+
+
+    }
+
+
+    window.onload = carregarExcelAutomatico;
+  </script>
+</body>
+
+</html>
