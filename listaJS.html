@@ -70,7 +70,7 @@
   <script>
     const colunaFazenda = "Fazenda";
     const colunaArea = "Setor";
-    const colunaLider = "Líder";
+    const colunaLider = "Lider";
     const colunaLiderado = "Liderado";
 
     let dadosHierarquiaGlobal = null;
@@ -81,7 +81,7 @@
     // ==========================================================
     async function carregarExcelAutomatico() {
       try {
-        const response = await fetch("Base3.xlsx");
+        const response = await fetch("./wwwroot/Base3.xlsx");
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: "array" });
         const planilha = workbook.Sheets[workbook.SheetNames[0]];
@@ -98,7 +98,7 @@
     // ==========================================================
     function processarDadosExcel(json) {
       const linhasValidas = json.filter(l =>
-        l[colunaFazenda] && l[colunaArea] && l[colunaLider] && l[colunaLiderado]
+        l[colunaFazenda] //&& l[colunaArea] && l[colunaLider] && l[colunaLiderado]
       );
       linhasValidasGlobal = linhasValidas;
 

@@ -98,48 +98,42 @@
       const diretoria = new Map();
 
 
-      json.sort((a, b) => a.Nivel.localeCompare(b.Nivel));
+
 
       // }
       json.forEach(linha => {
+        const diretor = linha["Diretor"].toString().trim()
         const fazenda = linha[colunaFazenda].toString().trim();
+        const gerente = linha["Gerente"]
         const area = linha[colunaArea].toString().trim();
         const lider = linha[colunaLider].toString().trim();
         const liderado = linha[colunaLiderado].toString().trim();
 
-        const Nivel = linha["Nivel"];
 
-  
+        if (!gerente) {
+          console.log("Vazia");
+        }
+
+
 
 
         if (!fazendasMap.has(fazenda)) fazendasMap.set(fazenda, new Map());
         const areasMap = fazendasMap.get(fazenda);
 
+        if (!diretoria.has(diretor)) diretoria.set(diretor, new Map());
+        const fazendas = diretoria.get(diretor);
 
-          if (!diretoria.has(lider) && Nivel =="N1") diretoria.set(lider, new Map())
-          const gerente = diretoria.get(lider);
+        if (!fazendas.has(fazenda)) fazendas.set(fazenda, new Map());
+        const gertentes = fazendas.get(fazenda);
 
-
-          if (!gerente.has(lider) && Nivel =="N2") gerente.set(lider, new Map());
-
-       
-
-
-   
-      
- 
-
-
-
-        
-        if (!areasMap.has(area)) areasMap.set(area, new Map());
+        if (!gertentes.has(gerente) && gerente) gertentes.set(gerente, new Map());
 
 
 
 
-        const lideresMap = areasMap.get(area);
-        if (!lideresMap.has(lider)) lideresMap.set(lider, []);
-        lideresMap.get(lider).push(liderado);
+        // const lideresMap = areasMap.get(area);
+        // if (!lideresMap.has(lider)) lideresMap.set(lider, []);
+        // lideresMap.get(lider).push(liderado);
 
 
 
