@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
   <title>Organograma Fazenda → Área → Líder → Liderados</title>
@@ -13,35 +14,42 @@
       margin: 20px;
       overflow: hidden;
     }
+
     h2 {
       text-align: center;
     }
+
     svg {
       width: 100%;
       height: 85vh;
       border: 1px solid #ccc;
       background: #fff;
     }
+
     .node rect {
       stroke: #4285f4;
       stroke-width: 1.2px;
       rx: 10;
       ry: 10;
     }
+
     .node text {
       font-size: 12px;
       text-anchor: middle;
       dominant-baseline: middle;
     }
+
     .link {
       fill: none;
       stroke: #999;
       stroke-width: 1.2px;
     }
+
     .painel {
       text-align: center;
       margin-bottom: 10px;
     }
+
     .painel button,
     .painel select {
       padding: 6px 12px;
@@ -114,47 +122,110 @@
       });
 
       // Monta hierarquia
-      const fazendasMap = new Map();
+      // const fazendasMap = new Map();
       const diretoriaMap = new Map()
       linhasValidas.forEach(linha => {
         const fazenda = linha[colunaFazenda].toString().trim();
+        const diretor = linha["Diretor"]
+        const gerente = linha["Gerente"]
+        const coordenador = linha["Coordenador"]
+        const supervisor = linha["Supervisor"]
+        const lideres = linha["Lider"]
         const area = linha[colunaArea].toString().trim();
         const lider = linha[colunaLider].toString().trim();
         const liderado = linha[colunaLiderado].toString().trim();
 
-        const Nivel = linha["Nivel Lederanca"]
 
-        // if(Nivel=="N1"){
 
-        //   if (!fazendasMap.has(fazenda)) fazendasMap.set(lider, new Map());
-        // }
+
+        if (!diretoriaMap.has(diretor)) diretoriaMap.set(diretor, new Map());
+        const fazendasMap = diretoriaMap.get(diretor);
+
+        console.log(diretoriaMap)
 
         if (!fazendasMap.has(fazenda)) fazendasMap.set(fazenda, new Map());
-        const areasMap = fazendasMap.get(fazenda);
+        const gerentesMap = fazendasMap.get(fazenda);
 
-        if (!areasMap.has(area)) areasMap.set(area, new Map());
-        const lideresMap = areasMap.get(area);
+        console.log(gerentesMap)
 
-        if (!lideresMap.has(lider)) lideresMap.set(lider, []);
-        lideresMap.get(lider).push(liderado);
+        if (!gerentesMap.has(gerente)) gerentesMap.set(gerente, new Map());
+        const coordenadorMap = gerentesMap.get(gerente);
+
+        if (!coordenadorMap.has(coordenador)) coordenadorMap.set(coordenador, new Map())
+        const supervisorMap = coordenadorMap.get(coordenador)
+
+
+        if (!supervisorMap.has(supervisor)) supervisorMap.set(supervisor, new Map())
+        const liderMap = supervisorMap.get(supervisor)
+
+
+        if (!liderMap.has(lideres)) liderMap.set(lideres, new Map())
+        const lideradosMap = liderMap.get(lideres)
+
+
+
+        // if (!areasMap.has(area)) areasMap.set(area, new Map());
+        // const lideresMap = areasMap.get(area);
+
+        if (!lideradosMap.has(lider)) lideradosMap.set(lider, []);
+        lideradosMap.get(lider).push(liderado);
+
+        // console.log(diretoriaMap)
+
       });
+
+
+      function limparHierarquia(node) {
+        if (!node.children || node.children.length === 0) return node;
+
+        let novasChildren = [];
+
+        node.children.forEach(child => {
+          const filhoLimpo = limparHierarquia(child);
+
+          // Caso o nó seja "NA" ou vazio, seus filhos sobem para o nível atual
+          if (child.name === "NA" || !child.name || child.name.trim() === "") {
+            if (filhoLimpo.children && filhoLimpo.children.length > 0) {
+              novasChildren.push(...filhoLimpo.children);
+            }
+          } else {
+            novasChildren.push(filhoLimpo);
+          }
+        });
+
+        node.children = novasChildren;
+        return node;
+      }
+
+
+
 
       dadosHierarquiaGlobal = {
         name: "Grupo Michels",
-        children: Array.from(fazendasMap.entries()).map(([fazenda, areasMap]) => ({
-          name: fazenda,
-          children: Array.from(areasMap.entries()).map(([area, lideresMap]) => ({
-            name: area,
-            children: Array.from(lideresMap.entries()).map(([lider, filhos]) => ({
-              name: lider,
-              children: filhos.map(f => ({ name: f }))
+        children: Array.from(diretoriaMap.entries()).map(([diretor, fazendasMap]) => ({
+          name: diretor,
+          children: Array.from(fazendasMap.entries()).map(([fazenda, gerentesMap]) => ({
+            name: fazenda,
+            children: Array.from(gerentesMap.entries()).map(([gerente, coordenadorMap]) => ({
+              name: gerente,
+              children: Array.from(coordenadorMap.entries()).map(([coordenador, supervisorMap]) => ({
+                name: coordenador,
+                children: Array.from(supervisorMap.entries()).map(([supervisor, liderMap]) => ({
+                  name: supervisor,
+                  children: Array.from(liderMap.entries()).map(([cargoLider, lideradosMap]) => ({
+                    name: cargoLider,
+                    children: lideradosMap.get(cargoLider).map(liderado => ({
+                      name: liderado
+                    }))
+                  }))
+                }))
+              }))
             }))
           }))
         }))
       };
 
-  
-
+      dadosHierarquiaGlobal = limparHierarquia(dadosHierarquiaGlobal);
       desenharOrganograma(dadosHierarquiaGlobal);
     }
 
@@ -399,4 +470,5 @@
     window.onload = carregarExcelAutomatico;
   </script>
 </body>
+
 </html>
