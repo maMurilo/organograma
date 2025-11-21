@@ -121,8 +121,26 @@
         filtroFazenda.appendChild(opt);
       });
 
-      // Monta hierarquia
-      // const fazendasMap = new Map();
+
+      const pessoasQueSaoLideres = new Set();
+
+      // Para cada linha do Excel (json)
+      json.forEach(linha => {
+        [
+          "Diretor",
+          "Gerente",
+          "Coordenador",
+          "Supervisor",
+          "Lider"
+        ].forEach(c => {
+          const nome = linha[c]?.toString().trim();
+          if (nome && nome !== "NA") {
+            pessoasQueSaoLideres.add(nome);
+          }
+        });
+      });
+
+
       const diretoriaMap = new Map()
       linhasValidas.forEach(linha => {
         const fazenda = linha[colunaFazenda].toString().trim();
@@ -168,7 +186,9 @@
         // const lideresMap = areasMap.get(area);
 
         if (!lideradosMap.has(lider)) lideradosMap.set(lider, []);
-        lideradosMap.get(lider).push(liderado);
+        const gestor = pessoasQueSaoLideres.has(liderado)
+        
+        if (!gestor) lideradosMap.get(lider).push(liderado);
 
         // console.log(diretoriaMap)
 
@@ -201,7 +221,7 @@
 
 
       dadosHierarquiaGlobal = {
-        name: "Grupo Michels",
+        name: "JOSE MATIAS MICHELS",
         children: Array.from(diretoriaMap.entries()).map(([diretor, fazendasMap]) => ({
           name: diretor,
           children: Array.from(fazendasMap.entries()).map(([fazenda, gerentesMap]) => ({
