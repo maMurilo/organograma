@@ -149,7 +149,7 @@
         const coordenador = linha["Coordenador"]
         const supervisor = linha["Supervisor"]
         const lideres = linha["Lider"]
-        const area = linha[colunaArea].toString().trim();
+        const area = linha["Area2"].toString().trim();
         const lider = linha[colunaLider].toString().trim();
         const liderado = linha[colunaLiderado].toString().trim();
 
@@ -164,10 +164,12 @@
         if (!fazendasMap.has(fazenda)) fazendasMap.set(fazenda, new Map());
         const gerentesMap = fazendasMap.get(fazenda);
 
-        console.log(gerentesMap)
 
         if (!gerentesMap.has(gerente)) gerentesMap.set(gerente, new Map());
-        const coordenadorMap = gerentesMap.get(gerente);
+        const areasMap = gerentesMap.get(gerente)
+
+        if (!areasMap.has(area)) areasMap.set(area, new Map())
+        const coordenadorMap = areasMap.get(area);
 
         if (!coordenadorMap.has(coordenador)) coordenadorMap.set(coordenador, new Map())
         const supervisorMap = coordenadorMap.get(coordenador)
@@ -187,7 +189,7 @@
 
         if (!lideradosMap.has(lider)) lideradosMap.set(lider, []);
         const gestor = pessoasQueSaoLideres.has(liderado)
-        
+
         if (!gestor) lideradosMap.get(lider).push(liderado);
 
         // console.log(diretoriaMap)
@@ -218,24 +220,27 @@
       }
 
 
-
+      console.log(diretoriaMap.entries())
 
       dadosHierarquiaGlobal = {
         name: "JOSE MATIAS MICHELS",
-        children: Array.from(diretoriaMap.entries()).map(([diretor, fazendasMap]) => ({
-          name: diretor,
-          children: Array.from(fazendasMap.entries()).map(([fazenda, gerentesMap]) => ({
-            name: fazenda,
-            children: Array.from(gerentesMap.entries()).map(([gerente, coordenadorMap]) => ({
-              name: gerente,
-              children: Array.from(coordenadorMap.entries()).map(([coordenador, supervisorMap]) => ({
-                name: coordenador,
-                children: Array.from(supervisorMap.entries()).map(([supervisor, liderMap]) => ({
-                  name: supervisor,
-                  children: Array.from(liderMap.entries()).map(([cargoLider, lideradosMap]) => ({
-                    name: cargoLider,
-                    children: lideradosMap.get(cargoLider).map(liderado => ({
-                      name: liderado
+        children: Array.from(diretoriaMap.entries()).map(([Diretor, Fazendas]) => ({
+          name: Diretor,
+          children: Array.from(Fazendas.entries()).map(([Fazenda, Gerentes]) => ({
+            name: Fazenda,
+            children: Array.from(Gerentes.entries()).map(([Gerente, Areas]) => ({
+              name: Gerente,
+              children: Array.from(Areas.entries()).map(([Area, Coordenadores]) => ({
+                name: Area,
+                children: Array.from(Coordenadores.entries()).map(([Coordenador, Supervisores]) => ({
+                  name: Coordenador,
+                  children: Array.from(Supervisores.entries()).map(([Supervisor, Lideres]) => ({
+                    name: Supervisor,
+                    children: Array.from(Lideres.entries()).map(([Lider, Liderados]) => ({
+                      name: Lider,
+                      children: Liderados.get(Lider).map(Liderado => ({
+                        name: Liderado
+                      }))
                     }))
                   }))
                 }))
@@ -244,6 +249,31 @@
           }))
         }))
       };
+
+      // dadosHierarquiaGlobal = {
+      //   name: "JOSE MATIAS MICHELS",
+      //   children: Array.from(diretoriaMap.entries()).map(([diretor, fazendasMap]) => ({
+      //     name: diretor,
+      //     children: Array.from(fazendasMap.entries()).map(([fazenda, gerentesMap]) => ({
+      //       name: fazenda,
+      //       children: Array.from(gerentesMap.entries()).map(([gerente, coordenadorMap]) => ({
+      //         name: gerente,
+      //         children: Array.from(coordenadorMap.entries()).map(([coordenador, supervisorMap]) => ({
+      //           name: coordenador,
+      //           children: Array.from(supervisorMap.entries()).map(([supervisor, liderMap]) => ({
+      //             name: supervisor,
+      //             children: Array.from(liderMap.entries()).map(([cargoLider, lideradosMap]) => ({
+      //               name: cargoLider,
+      //               children: lideradosMap.get(cargoLider).map(liderado => ({
+      //                 name: liderado
+      //               }))
+      //             }))
+      //           }))
+      //         }))
+      //       }))
+      //     }))
+      //   }))
+      // };
 
       dadosHierarquiaGlobal = limparHierarquia(dadosHierarquiaGlobal);
       desenharOrganograma(dadosHierarquiaGlobal);
@@ -309,6 +339,7 @@
     function desenharOrganograma(dados) {
       const svg = d3.select("#svg");
       svg.selectAll("*").remove();
+
 
       const width = window.innerWidth;
       const nodeWidth = 150;
@@ -423,21 +454,45 @@
             if (d.children || d._children) toggleChildren(d);
           });
 
+
+        const cargoColors = {
+          0: "#0e2841",
+          1: "#dae9f8",
+          2: "#a6c9ec",
+          3: "#4d93d9",
+          4: "#215c98",
+          5: "#153d64",
+          6: "#156082",
+          7:"#c0e6f5"
+        };
+
+
         nodeEnter.append("rect")
           .attr("x", -nodeWidth / 2)
           .attr("y", -nodeHeight / 2)
           .attr("width", nodeWidth)
           .attr("height", nodeHeight)
-          .attr("fill", d => {
-            if (d.depth === 0) return "#fff9c4";
-            if (d.depth === 1) return "#b2dfdb";
-            if (d.depth === 2) return "#bbdefb";
-            if (d.depth === 3) return "#c8e6c9";
-            return "#e1bee7";
-          });
+          .attr("fill", d => cargoColors[d.depth] || "#000000")
+        // .attr("fill", d => {
+        //   if (d.depth === 0) return "#1e578d";
+        //   if (d.depth === 1) return "#b2dfdb";
+        //   if (d.depth === 2) return "#bbdefb";
+        //   if (d.depth === 3) return "#c8e6c9";
+        //   return "#e1bee7";
+        // });
+
+        const cargoTextColors = {
+          0: "#ffffff",  // CEO
+          1: "#0E2841",  // Diretor
+          // 2: "#000000",  // Gerente
+          // 3: "#000000",  // Coordenador/Supervisor
+          // 4: "#000000"   // Lider/Liderados
+        };
+
 
         nodeEnter.append("text")
           .attr("font-size", 12)
+          .attr("fill", d => cargoTextColors[d.depth] || "#ffffff")
           .each(function (d) {
             const t = d3.select(this);
             wrapText(t, d.data.name, nodeWidth);
